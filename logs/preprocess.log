@@ -1,0 +1,316 @@
+[2023-03-17 12:27:58,659 INFO] Processing json_data/ali.train.3.json
+[2023-03-17 12:28:05,038 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-17 12:28:05,131 INFO] setting ignored attribute vectors_norm to None
+[2023-03-17 12:28:05,132 INFO] loaded pretrain_emb/word2vec
+[2023-03-17 16:54:05,558 INFO] Processed instances 3160
+[2023-03-17 16:54:05,558 INFO] Saving to bert_data/ali.train.3.bert.pt
+[2023-03-17 16:54:56,679 INFO] Processing json_data/ali.train.0.json
+[2023-03-17 16:55:01,994 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-17 16:55:02,663 INFO] setting ignored attribute vectors_norm to None
+[2023-03-17 16:55:02,664 INFO] loaded pretrain_emb/word2vec
+[2023-03-17 21:21:36,514 INFO] Processed instances 3160
+[2023-03-17 21:21:36,514 INFO] Saving to bert_data/ali.train.0.bert.pt
+[2023-03-17 21:22:26,686 INFO] Processing json_data/ali.train.7.json
+[2023-03-17 21:22:31,805 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-17 21:22:31,883 INFO] setting ignored attribute vectors_norm to None
+[2023-03-17 21:22:31,884 INFO] loaded pretrain_emb/word2vec
+[2023-03-18 01:49:24,219 INFO] Processed instances 3083
+[2023-03-18 01:49:24,219 INFO] Saving to bert_data/ali.train.7.bert.pt
+[2023-03-18 01:50:13,887 INFO] Processing json_data/ali.test.0.json
+[2023-03-18 01:50:19,709 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-18 01:50:19,790 INFO] setting ignored attribute vectors_norm to None
+[2023-03-18 01:50:19,791 INFO] loaded pretrain_emb/word2vec
+[2023-03-18 06:13:40,763 INFO] Processed instances 3166
+[2023-03-18 06:13:40,763 INFO] Saving to bert_data/ali.test.0.bert.pt
+[2023-03-18 06:14:35,154 INFO] Processing json_data/ali.train.2.json
+[2023-03-18 06:14:40,334 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-18 06:14:40,979 INFO] setting ignored attribute vectors_norm to None
+[2023-03-18 06:14:40,979 INFO] loaded pretrain_emb/word2vec
+[2023-03-18 10:41:17,650 INFO] Processed instances 3160
+[2023-03-18 10:41:17,650 INFO] Saving to bert_data/ali.train.2.bert.pt
+[2023-03-18 10:42:08,512 INFO] Processing json_data/ali.train.6.json
+[2023-03-18 10:42:14,084 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-18 10:42:14,746 INFO] setting ignored attribute vectors_norm to None
+[2023-03-18 10:42:14,746 INFO] loaded pretrain_emb/word2vec
+[2023-03-18 15:14:06,923 INFO] Processed instances 3160
+[2023-03-18 15:14:06,924 INFO] Saving to bert_data/ali.train.6.bert.pt
+[2023-03-18 15:15:01,980 INFO] Processing json_data/ali.dev.0.json
+[2023-03-18 15:15:07,358 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-18 15:15:08,019 INFO] setting ignored attribute vectors_norm to None
+[2023-03-18 15:15:08,020 INFO] loaded pretrain_emb/word2vec
+[2023-03-18 19:37:57,082 INFO] Processed instances 3114
+[2023-03-18 19:37:57,082 INFO] Saving to bert_data/ali.dev.0.bert.pt
+[2023-03-18 19:38:46,241 INFO] Processing json_data/ali.train.4.json
+[2023-03-18 19:38:52,225 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-18 19:38:52,303 INFO] setting ignored attribute vectors_norm to None
+[2023-03-18 19:38:52,303 INFO] loaded pretrain_emb/word2vec
+[2023-03-19 00:16:28,751 INFO] Processed instances 3160
+[2023-03-19 00:16:28,751 INFO] Saving to bert_data/ali.train.4.bert.pt
+[2023-03-19 00:17:18,291 INFO] Processing json_data/ali.train.1.json
+[2023-03-19 00:17:23,427 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-19 00:17:24,077 INFO] setting ignored attribute vectors_norm to None
+[2023-03-19 00:17:24,078 INFO] loaded pretrain_emb/word2vec
+[2023-03-19 04:44:35,602 INFO] Processed instances 3160
+[2023-03-19 04:44:35,602 INFO] Saving to bert_data/ali.train.1.bert.pt
+[2023-03-19 04:45:26,404 INFO] Processing json_data/ali.train.5.json
+[2023-03-19 04:45:32,034 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-03-19 04:45:32,107 INFO] setting ignored attribute vectors_norm to None
+[2023-03-19 04:45:32,107 INFO] loaded pretrain_emb/word2vec
+[2023-03-19 09:13:31,367 INFO] Processed instances 3160
+[2023-03-19 09:13:31,367 INFO] Saving to bert_data/ali.train.5.bert.pt
+[2023-03-19 09:14:18,433 INFO] Saving file counter to bert_data/idf_info.pt
+[2023-03-19 09:14:18,480 INFO] Total examples: 31483
+[2023-03-19 09:14:18,480 INFO] Average sentence number per dialogue: 76.812978
+[2023-03-19 09:14:18,480 INFO] Processed average sentence number per dialogue: 76.812947
+[2023-03-19 09:14:18,480 INFO] Total sentences: 2418303
+[2023-03-19 09:14:18,480 INFO] Processed sentences: 2418302
+[2023-03-19 09:14:18,480 INFO] Exceeded max sentence number dialogues: 18644
+[2023-03-19 09:14:18,480 INFO] Max dialogue sentences: 100
+[2023-03-19 09:14:18,480 INFO] Dialogue sentences 0 ~ 20: 2717, 0.09%
+[2023-03-19 09:14:18,480 INFO] Dialogue sentences 20 ~ 40: 3966, 0.13%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 40 ~ 60: 2750, 0.09%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 60 ~ 80: 1870, 0.06%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 80 ~ 100: 1536, 0.05%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 100 ~ 120: 18644, 0.59%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 120 ~ 140: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 140 ~ 160: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 160 ~ 180: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 180 ~ 200: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Dialogue sentences 200 ~ 220: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Exceed length sentences number: 36233
+[2023-03-19 09:14:18,481 INFO] Average src sentence length: 68.617996
+[2023-03-19 09:14:18,481 INFO] Sent length 0 ~ 10: 0, 0.00%
+[2023-03-19 09:14:18,481 INFO] Sent length 10 ~ 20: 190843, 0.08%
+[2023-03-19 09:14:18,481 INFO] Sent length 20 ~ 30: 274754, 0.11%
+[2023-03-19 09:14:18,481 INFO] Sent length 30 ~ 40: 249844, 0.10%
+[2023-03-19 09:14:18,481 INFO] Sent length 40 ~ 50: 223905, 0.09%
+[2023-03-19 09:14:18,481 INFO] Sent length 50 ~ 60: 207161, 0.09%
+[2023-03-19 09:14:18,481 INFO] Sent length 60 ~ 70: 189987, 0.08%
+[2023-03-19 09:14:18,481 INFO] Sent length 70 ~ 80: 176644, 0.07%
+[2023-03-19 09:14:18,481 INFO] Sent length 80 ~ 90: 163807, 0.07%
+[2023-03-19 09:14:18,481 INFO] Sent length 90 ~ 100: 152148, 0.06%
+[2023-03-19 09:14:18,481 INFO] Sent length 100 ~ 110: 589209, 0.24%
+[2023-03-19 09:14:18,482 INFO] Average src token length: 5270.752660
+[2023-03-19 09:14:18,482 INFO] token num 0 ~ 300: 34, 0.00%
+[2023-03-19 09:14:18,482 INFO] token num 300 ~ 600: 946, 0.03%
+[2023-03-19 09:14:18,482 INFO] token num 600 ~ 900: 1429, 0.05%
+[2023-03-19 09:14:18,482 INFO] token num 900 ~ 1200: 1367, 0.04%
+[2023-03-19 09:14:18,482 INFO] token num 1200 ~ 1500: 1143, 0.04%
+[2023-03-19 09:14:18,482 INFO] token num 1500 ~ 1800: 1131, 0.04%
+[2023-03-19 09:14:18,482 INFO] token num 1800 ~ 2100: 1072, 0.03%
+[2023-03-19 09:14:18,482 INFO] token num 2100 ~ 2400: 905, 0.03%
+[2023-03-19 09:14:18,482 INFO] token num 2400 ~ 2700: 820, 0.03%
+[2023-03-19 09:14:18,482 INFO] token num 2700 ~ 3000: 750, 0.02%
+[2023-03-19 09:14:18,482 INFO] token num 3000 ~ 3300: 21886, 0.70%
+[2023-03-19 09:14:18,482 INFO] Average tgt length: 99.854144
+
+[2023-05-29 23:04:29,808 INFO] Processing json_data/ali.train.3.json
+[2023-05-29 23:04:36,054 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-05-29 23:04:36,246 INFO] setting ignored attribute vectors_norm to None
+[2023-05-29 23:04:36,247 INFO] loaded pretrain_emb/word2vec
+[2023-05-30 15:03:02,477 INFO] Processed instances 3160
+[2023-05-30 15:03:02,477 INFO] Saving to bert_data/ali.train.3.bert.pt
+[2023-05-30 15:03:50,152 INFO] Processing json_data/ali.train.0.json
+[2023-05-30 15:03:55,596 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-05-30 15:03:55,675 INFO] setting ignored attribute vectors_norm to None
+[2023-05-30 15:03:55,676 INFO] loaded pretrain_emb/word2vec
+[2023-05-31 07:51:50,165 INFO] Processed instances 3160
+[2023-05-31 07:51:50,590 INFO] Saving to bert_data/ali.train.0.bert.pt
+[2023-05-31 07:52:33,581 INFO] Processing json_data/ali.train.7.json
+[2023-05-31 07:52:40,310 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-05-31 07:52:41,137 INFO] setting ignored attribute vectors_norm to None
+[2023-05-31 07:52:41,137 INFO] loaded pretrain_emb/word2vec
+[2023-06-01 00:11:02,209 INFO] Processed instances 3083
+[2023-06-01 00:11:02,631 INFO] Saving to bert_data/ali.train.7.bert.pt
+[2023-06-01 00:11:48,688 INFO] Processing json_data/ali.test.0.json
+[2023-06-01 00:11:56,450 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-01 00:11:56,612 INFO] setting ignored attribute vectors_norm to None
+[2023-06-01 00:11:56,612 INFO] loaded pretrain_emb/word2vec
+[2023-06-01 15:56:31,059 INFO] Processed instances 3166
+[2023-06-01 15:56:31,072 INFO] Saving to bert_data/ali.test.0.bert.pt
+[2023-06-01 15:57:17,008 INFO] Processing json_data/ali.train.2.json
+[2023-06-01 15:57:24,533 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-01 15:57:24,687 INFO] setting ignored attribute vectors_norm to None
+[2023-06-01 15:57:24,687 INFO] loaded pretrain_emb/word2vec
+[2023-06-02 08:18:29,240 INFO] Processed instances 3160
+[2023-06-02 08:18:29,665 INFO] Saving to bert_data/ali.train.2.bert.pt
+[2023-06-02 08:19:13,772 INFO] Processing json_data/ali.train.6.json
+[2023-06-02 08:19:20,588 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-02 08:19:20,696 INFO] setting ignored attribute vectors_norm to None
+[2023-06-02 08:19:20,696 INFO] loaded pretrain_emb/word2vec
+[2023-06-03 00:32:09,681 INFO] Processed instances 3160
+[2023-06-03 00:32:09,681 INFO] Saving to bert_data/ali.train.6.bert.pt
+[2023-06-03 00:32:54,505 INFO] Processing json_data/ali.dev.0.json
+[2023-06-03 00:33:01,408 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-03 00:33:01,572 INFO] setting ignored attribute vectors_norm to None
+[2023-06-03 00:33:01,572 INFO] loaded pretrain_emb/word2vec
+[2023-06-03 16:11:53,186 INFO] Processed instances 3114
+[2023-06-03 16:11:53,186 INFO] Saving to bert_data/ali.dev.0.bert.pt
+[2023-06-03 16:12:36,571 INFO] Processing json_data/ali.train.4.json
+[2023-06-03 16:12:43,335 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-03 16:12:43,412 INFO] setting ignored attribute vectors_norm to None
+[2023-06-03 16:12:43,412 INFO] loaded pretrain_emb/word2vec
+[2023-06-04 08:20:39,757 INFO] Processed instances 3160
+[2023-06-04 08:20:39,757 INFO] Saving to bert_data/ali.train.4.bert.pt
+[2023-06-04 08:21:25,144 INFO] Processing json_data/ali.train.1.json
+[2023-06-04 08:21:31,650 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-04 08:21:31,725 INFO] setting ignored attribute vectors_norm to None
+[2023-06-04 08:21:31,725 INFO] loaded pretrain_emb/word2vec
+[2023-06-05 00:18:32,709 INFO] Processed instances 3160
+[2023-06-05 00:18:32,710 INFO] Saving to bert_data/ali.train.1.bert.pt
+[2023-06-05 00:19:15,210 INFO] Processing json_data/ali.train.5.json
+[2023-06-05 00:19:22,229 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-06-05 00:19:23,564 INFO] setting ignored attribute vectors_norm to None
+[2023-06-05 00:19:23,564 INFO] loaded pretrain_emb/word2vec
+[2023-06-05 17:04:06,888 INFO] Processed instances 3160
+[2023-06-05 17:04:06,902 INFO] Saving to bert_data/ali.train.5.bert.pt
+[2023-06-05 17:04:58,366 INFO] Saving file counter to bert_data/idf_info.pt
+[2023-06-05 17:04:58,410 INFO] Total examples: 31483
+[2023-06-05 17:04:58,410 INFO] Average sentence number per dialogue: 76.812978
+[2023-06-05 17:04:58,410 INFO] Processed average sentence number per dialogue: 76.812947
+[2023-06-05 17:04:58,410 INFO] Total sentences: 2418303
+[2023-06-05 17:04:58,410 INFO] Processed sentences: 2418302
+[2023-06-05 17:04:58,410 INFO] Exceeded max sentence number dialogues: 18644
+[2023-06-05 17:04:58,410 INFO] Max dialogue sentences: 100
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 0 ~ 20: 2717, 0.09%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 20 ~ 40: 3966, 0.13%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 40 ~ 60: 2750, 0.09%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 60 ~ 80: 1870, 0.06%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 80 ~ 100: 1536, 0.05%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 100 ~ 120: 18644, 0.59%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 120 ~ 140: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 140 ~ 160: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 160 ~ 180: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 180 ~ 200: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Dialogue sentences 200 ~ 220: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Exceed length sentences number: 0
+[2023-06-05 17:04:58,411 INFO] Average src sentence length: 68.796363
+[2023-06-05 17:04:58,411 INFO] Sent length 0 ~ 10: 0, 0.00%
+[2023-06-05 17:04:58,411 INFO] Sent length 10 ~ 20: 190843, 0.08%
+[2023-06-05 17:04:58,411 INFO] Sent length 20 ~ 30: 274754, 0.11%
+[2023-06-05 17:04:58,411 INFO] Sent length 30 ~ 40: 249844, 0.10%
+[2023-06-05 17:04:58,411 INFO] Sent length 40 ~ 50: 223905, 0.09%
+[2023-06-05 17:04:58,411 INFO] Sent length 50 ~ 60: 207161, 0.09%
+[2023-06-05 17:04:58,411 INFO] Sent length 60 ~ 70: 189987, 0.08%
+[2023-06-05 17:04:58,411 INFO] Sent length 70 ~ 80: 176644, 0.07%
+[2023-06-05 17:04:58,412 INFO] Sent length 80 ~ 90: 163807, 0.07%
+[2023-06-05 17:04:58,412 INFO] Sent length 90 ~ 100: 152148, 0.06%
+[2023-06-05 17:04:58,412 INFO] Sent length 100 ~ 110: 589209, 0.24%
+[2023-06-05 17:04:58,412 INFO] Average src token length: 5284.453546
+[2023-06-05 17:04:58,412 INFO] token num 0 ~ 300: 34, 0.00%
+[2023-06-05 17:04:58,412 INFO] token num 300 ~ 600: 945, 0.03%
+[2023-06-05 17:04:58,412 INFO] token num 600 ~ 900: 1422, 0.05%
+[2023-06-05 17:04:58,412 INFO] token num 900 ~ 1200: 1360, 0.04%
+[2023-06-05 17:04:58,412 INFO] token num 1200 ~ 1500: 1148, 0.04%
+[2023-06-05 17:04:58,412 INFO] token num 1500 ~ 1800: 1137, 0.04%
+[2023-06-05 17:04:58,412 INFO] token num 1800 ~ 2100: 1067, 0.03%
+[2023-06-05 17:04:58,412 INFO] token num 2100 ~ 2400: 904, 0.03%
+[2023-06-05 17:04:58,412 INFO] token num 2400 ~ 2700: 820, 0.03%
+[2023-06-05 17:04:58,412 INFO] token num 2700 ~ 3000: 751, 0.02%
+[2023-06-05 17:04:58,412 INFO] token num 3000 ~ 3300: 21895, 0.70%
+[2023-06-05 17:04:58,412 INFO] Average tgt length: 99.854144
+[2023-07-09 20:14:50,657 INFO] Processing json_data/ali.train.3.json
+[2023-07-09 20:14:56,939 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-09 20:14:57,026 INFO] setting ignored attribute vectors_norm to None
+[2023-07-09 20:14:57,027 INFO] loaded pretrain_emb/word2vec
+[2023-07-10 01:16:46,261 INFO] Processed instances 3160
+[2023-07-10 01:16:46,261 INFO] Saving to bert_data_2/ali.train.3.bert.pt
+[2023-07-10 01:17:30,499 INFO] Processing json_data/ali.train.0.json
+[2023-07-10 01:17:35,883 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-10 01:17:35,960 INFO] setting ignored attribute vectors_norm to None
+[2023-07-10 01:17:35,960 INFO] loaded pretrain_emb/word2vec
+[2023-07-10 06:24:37,212 INFO] Processed instances 3160
+[2023-07-10 06:24:37,212 INFO] Saving to bert_data_2/ali.train.0.bert.pt
+[2023-07-10 06:25:21,579 INFO] Processing json_data/ali.train.7.json
+[2023-07-10 06:25:27,109 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-10 06:25:27,191 INFO] setting ignored attribute vectors_norm to None
+[2023-07-10 06:25:27,192 INFO] loaded pretrain_emb/word2vec
+[2023-07-10 11:25:14,474 INFO] Processed instances 3083
+[2023-07-10 11:25:14,474 INFO] Saving to bert_data_2/ali.train.7.bert.pt
+[2023-07-10 11:25:55,880 INFO] Processing json_data/ali.test.0.json
+[2023-07-10 11:26:01,455 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-10 11:26:01,535 INFO] setting ignored attribute vectors_norm to None
+[2023-07-10 11:26:01,535 INFO] loaded pretrain_emb/word2vec
+[2023-07-10 16:25:06,556 INFO] Processed instances 3166
+[2023-07-10 16:25:06,557 INFO] Saving to bert_data_2/ali.test.0.bert.pt
+[2023-07-10 16:25:50,923 INFO] Processing json_data/ali.train.2.json
+[2023-07-10 16:25:56,941 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-10 16:25:57,022 INFO] setting ignored attribute vectors_norm to None
+[2023-07-10 16:25:57,022 INFO] loaded pretrain_emb/word2vec
+[2023-07-10 21:23:53,600 INFO] Processed instances 3160
+[2023-07-10 21:23:53,600 INFO] Saving to bert_data_2/ali.train.2.bert.pt
+[2023-07-10 21:24:38,105 INFO] Processing json_data/ali.train.6.json
+[2023-07-10 21:24:43,491 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-10 21:24:43,569 INFO] setting ignored attribute vectors_norm to None
+[2023-07-10 21:24:43,569 INFO] loaded pretrain_emb/word2vec
+[2023-07-11 02:27:37,418 INFO] Processed instances 3160
+[2023-07-11 02:27:37,418 INFO] Saving to bert_data_2/ali.train.6.bert.pt
+[2023-07-11 02:28:22,548 INFO] Processing json_data/ali.dev.0.json
+[2023-07-11 02:28:28,023 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-11 02:28:28,097 INFO] setting ignored attribute vectors_norm to None
+[2023-07-11 02:28:28,098 INFO] loaded pretrain_emb/word2vec
+[2023-07-11 07:19:24,257 INFO] Processed instances 3114
+[2023-07-11 07:19:24,257 INFO] Saving to bert_data_2/ali.dev.0.bert.pt
+[2023-07-11 07:20:08,066 INFO] Processing json_data/ali.train.4.json
+[2023-07-11 07:20:13,587 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-11 07:20:13,665 INFO] setting ignored attribute vectors_norm to None
+[2023-07-11 07:20:13,665 INFO] loaded pretrain_emb/word2vec
+[2023-07-11 12:21:17,890 INFO] Processed instances 3160
+[2023-07-11 12:21:17,890 INFO] Saving to bert_data_2/ali.train.4.bert.pt
+[2023-07-11 12:22:00,912 INFO] Processing json_data/ali.train.1.json
+[2023-07-11 12:22:06,424 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-11 12:22:06,504 INFO] setting ignored attribute vectors_norm to None
+[2023-07-11 12:22:06,504 INFO] loaded pretrain_emb/word2vec
+[2023-07-11 17:19:40,277 INFO] Processed instances 3160
+[2023-07-11 17:19:40,277 INFO] Saving to bert_data_2/ali.train.1.bert.pt
+[2023-07-11 17:20:23,156 INFO] Processing json_data/ali.train.5.json
+[2023-07-11 17:20:28,657 INFO] loading Word2VecKeyedVectors object from pretrain_emb/word2vec
+[2023-07-11 17:20:28,738 INFO] setting ignored attribute vectors_norm to None
+[2023-07-11 17:20:28,738 INFO] loaded pretrain_emb/word2vec
+[2023-07-11 22:32:20,987 INFO] Processed instances 3160
+[2023-07-11 22:32:20,988 INFO] Saving to bert_data_2/ali.train.5.bert.pt
+[2023-07-11 22:33:05,703 INFO] Saving file counter to bert_data_2/idf_info.pt
+[2023-07-11 22:33:05,746 INFO] Total examples: 31483
+[2023-07-11 22:33:05,746 INFO] Average sentence number per dialogue: 76.812978
+[2023-07-11 22:33:05,746 INFO] Processed average sentence number per dialogue: 76.812947
+[2023-07-11 22:33:05,747 INFO] Total sentences: 2418303
+[2023-07-11 22:33:05,747 INFO] Processed sentences: 2418302
+[2023-07-11 22:33:05,747 INFO] Exceeded max sentence number dialogues: 18644
+[2023-07-11 22:33:05,747 INFO] Max dialogue sentences: 100
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 0 ~ 20: 2717, 0.09%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 20 ~ 40: 3966, 0.13%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 40 ~ 60: 2750, 0.09%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 60 ~ 80: 1870, 0.06%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 80 ~ 100: 1536, 0.05%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 100 ~ 120: 18644, 0.59%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 120 ~ 140: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 140 ~ 160: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 160 ~ 180: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 180 ~ 200: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Dialogue sentences 200 ~ 220: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Exceed length sentences number: 36233
+[2023-07-11 22:33:05,747 INFO] Average src sentence length: 68.617996
+[2023-07-11 22:33:05,747 INFO] Sent length 0 ~ 10: 0, 0.00%
+[2023-07-11 22:33:05,747 INFO] Sent length 10 ~ 20: 190843, 0.08%
+[2023-07-11 22:33:05,747 INFO] Sent length 20 ~ 30: 274754, 0.11%
+[2023-07-11 22:33:05,747 INFO] Sent length 30 ~ 40: 249844, 0.10%
+[2023-07-11 22:33:05,747 INFO] Sent length 40 ~ 50: 223905, 0.09%
+[2023-07-11 22:33:05,748 INFO] Sent length 50 ~ 60: 207161, 0.09%
+[2023-07-11 22:33:05,748 INFO] Sent length 60 ~ 70: 189987, 0.08%
+[2023-07-11 22:33:05,748 INFO] Sent length 70 ~ 80: 176644, 0.07%
+[2023-07-11 22:33:05,748 INFO] Sent length 80 ~ 90: 163807, 0.07%
+[2023-07-11 22:33:05,748 INFO] Sent length 90 ~ 100: 152148, 0.06%
+[2023-07-11 22:33:05,748 INFO] Sent length 100 ~ 110: 589209, 0.24%
+[2023-07-11 22:33:05,748 INFO] Average src token length: 5270.752660
+[2023-07-11 22:33:05,748 INFO] token num 0 ~ 300: 34, 0.00%
+[2023-07-11 22:33:05,748 INFO] token num 300 ~ 600: 946, 0.03%
+[2023-07-11 22:33:05,748 INFO] token num 600 ~ 900: 1429, 0.05%
+[2023-07-11 22:33:05,748 INFO] token num 900 ~ 1200: 1367, 0.04%
+[2023-07-11 22:33:05,748 INFO] token num 1200 ~ 1500: 1143, 0.04%
+[2023-07-11 22:33:05,748 INFO] token num 1500 ~ 1800: 1131, 0.04%
+[2023-07-11 22:33:05,748 INFO] token num 1800 ~ 2100: 1072, 0.03%
+[2023-07-11 22:33:05,748 INFO] token num 2100 ~ 2400: 905, 0.03%
+[2023-07-11 22:33:05,748 INFO] token num 2400 ~ 2700: 820, 0.03%
+[2023-07-11 22:33:05,748 INFO] token num 2700 ~ 3000: 750, 0.02%
+[2023-07-11 22:33:05,748 INFO] token num 3000 ~ 3300: 21886, 0.70%
+[2023-07-11 22:33:05,748 INFO] Average tgt length: 99.854144
