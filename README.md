@@ -1,4 +1,5 @@
 # amasum_review_summ
+The code is partially referred to(https://github.com/RowitZou/topic-dialog-summ)[https://github.com/RowitZou/topic-dialog-summ]
 1. Convert dataset format
 
     ```
