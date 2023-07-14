@@ -57,4 +57,5 @@ python train.py -mode test -data_path bert_data/ali -idf_info_path bert_data/idf
 python train.py -mode test -data_path bert_data_2/ali -idf_info_path bert_data_2/idf_info.pt -test_from checkpoints/02rl_topic/model_step_XXXX.pt -log_file logs/02rl.topic.test.log -alpha 0.95 -topic_model -split_noise -result_path results/02test
 ```
 
-数据地址：
+数据：
+[amasum数据集](https://github.com/abrazinskas/SelSum/tree/master/data)
