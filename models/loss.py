@@ -12,7 +12,6 @@ import torch.nn.functional as F
 from models.reporter import Statistics
 from models.generator import collapse_copy_scores
 
-
 def abs_loss(args, generator, symbols, vocab, device, train=True):
 
     if args.copy_attn:
@@ -27,6 +26,47 @@ def abs_loss(args, generator, symbols, vocab, device, train=True):
     compute.to(device)
     return compute
 
+def abs_loss1(args, generator, symbols, vocab, device, train=True):
+
+    if args.copy_attn:
+        compute = CopyGeneratorLossCompute(
+            generator, vocab, symbols, args.copy_attn_force,
+            args.copy_loss_by_seqlength)
+    else:
+        compute = NMTLossCompute(
+            generator, vocab, symbols,
+            label_smoothing=args.label_smoothing if train else 0.0)
+
+    compute.to(device)
+    return compute
+
+def abs_loss2(args, generator, symbols, vocab, device, train=True):
+
+    if args.copy_attn:
+        compute = CopyGeneratorLossCompute(
+            generator, vocab, symbols, args.copy_attn_force,
+            args.copy_loss_by_seqlength)
+    else:
+        compute = NMTLossCompute(
+            generator, vocab, symbols,
+            label_smoothing=args.label_smoothing if train else 0.0)
+
+    compute.to(device)
+    return compute
+
+def abs_loss3(args, generator, symbols, vocab, device, train=True):
+
+    if args.copy_attn:
+        compute = CopyGeneratorLossCompute(
+            generator, vocab, symbols, args.copy_attn_force,
+            args.copy_loss_by_seqlength)
+    else:
+        compute = NMTLossCompute(
+            generator, vocab, symbols,
+            label_smoothing=args.label_smoothing if train else 0.0)
+
+    compute.to(device)
+    return compute
 
 class LossComputeBase(nn.Module):
     """
