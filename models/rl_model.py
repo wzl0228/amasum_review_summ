@@ -412,13 +412,13 @@ class Model(nn.Module):
         #                                           memory_mask=~mask_src_mapped,
         #                                           min_length=2, beam_size=1,
         #                                           topic_vec=topic_vec_ge)
-        verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+        verdict = self._fast_translate_batch1(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=1,
                                                  topic_vec=verdict_topic_vec_ge)
-        pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+        pros = self._fast_translate_batch2(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                 min_length=2, beam_size=1,
                                                 topic_vec=pros_topic_vec_ge)
-        cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+        cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                 min_length=2, beam_size=1,
                                                 topic_vec=cons_topic_vec_ge)
         summary_base = verdict + pros + cons
@@ -615,6 +615,499 @@ class Model(nn.Module):
 
             # Generator forward.
             log_probs = self.generator(dec_out.transpose(0, 1).squeeze(0))
+
+            vocab_size = log_probs.size(-1)
+
+            if step < min_length:
+                log_probs[:, self.end_token] = -1e20
+
+            if self.args.block_trigram:
+                cur_len = alive_seq.size(1)
+                if(cur_len > 3):
+                    for i in range(alive_seq.size(0)):
+                        fail = False
+                        words = [int(w) for w in alive_seq[i]]
+                        if(len(words) <= 3):
+                            continue
+                        trigrams = [(words[i-1], words[i], words[i+1]) for i in range(1, len(words)-1)]
+                        trigram = tuple(trigrams[-1])
+                        if trigram in trigrams[:-1]:
+                            fail = True
+                        if fail:
+                            log_probs[i] = -1e20
+
+            # Multiply probs by the beam probability.
+            log_probs += topk_log_probs.view(-1).unsqueeze(1)
+
+            alpha = self.args.alpha
+            length_penalty = ((5.0 + (step + 1)) / 6.0) ** alpha
+
+            # Flatten probs into a list of possibilities.
+            curr_scores = log_probs / length_penalty
+
+            curr_scores = curr_scores.reshape(-1, beam_size * vocab_size)
+            topk_scores, topk_ids = curr_scores.topk(beam_size, dim=-1)
+
+            # Recover log probs.
+            topk_log_probs = topk_scores * length_penalty
+
+            # Resolve beam origin and true word ids.
+            topk_beam_index = topk_ids.div(vocab_size)
+            topk_ids = topk_ids.fmod(vocab_size)
+
+            # Map beam_index to batch_index in the flat representation.
+            batch_index = (
+                    topk_beam_index
+                    + beam_offset[:topk_beam_index.size(0)].unsqueeze(1))
+            select_indices = batch_index.view(-1)
+
+            # Append last prediction.
+            alive_seq = torch.cat(
+                [alive_seq.index_select(0, select_indices.long()),
+                 topk_ids.view(-1, 1)], -1)
+
+            is_finished = topk_ids.eq(self.end_token)
+            if step + 1 == max_length:
+                is_finished.fill_(1)
+            # End condition is top beam is finished.
+            end_condition = is_finished[:, 0].eq(1)
+            # Save finished hypotheses.
+            if is_finished.any():
+                predictions = alive_seq.view(-1, beam_size, alive_seq.size(-1))
+                for i in range(is_finished.size(0)):
+                    b = batch_offset[i]
+                    if end_condition[i]:
+                        is_finished[i].fill_(1)
+                    finished_hyp = is_finished[i].nonzero().view(-1)
+                    # Store finished hypotheses for this batch.
+                    for j in finished_hyp:
+                        hypotheses[b].append((
+                            topk_scores[i, j],
+                            predictions[i, j, 1:]))
+                    # If the batch reached the end, save the n_best hypotheses.
+                    if end_condition[i]:
+                        best_hyp = sorted(
+                            hypotheses[b], key=lambda x: x[0], reverse=True)
+                        _, pred = best_hyp[0]
+                        results[b].append(pred)
+                non_finished = end_condition.eq(0).nonzero().view(-1)
+                # If all sentences are translated, no need to go further.
+                if len(non_finished) == 0:
+                    break
+                # Remove finished batches for the next step.
+                topk_log_probs = topk_log_probs.index_select(0, non_finished)
+                batch_index = batch_index.index_select(0, non_finished)
+                batch_offset = batch_offset.index_select(0, non_finished)
+                alive_seq = predictions.index_select(0, non_finished) \
+                    .view(-1, alive_seq.size(-1))
+            # Reorder states.
+            select_indices = batch_index.view(-1)
+            if memory_bank is not None:
+                memory_bank = memory_bank.index_select(0, select_indices.long())
+            if memory_mask is not None:
+                memory_mask = memory_mask.index_select(0, select_indices.long())
+            if init_tokens is not None:
+                init_tokens = init_tokens.index_select(0, select_indices.long())
+            if topic_vec is not None:
+                if self.args.split_noise:
+                    topic_vec = (topic_vec[0].index_select(0, select_indices.long()),
+                                 topic_vec[1].index_select(0, select_indices.long()))
+                else:
+                    topic_vec = topic_vec.index_select(0, select_indices.long())
+            dec_states.map_batch_fn(
+                lambda state, dim: state.index_select(dim, select_indices.long()))
+
+        results = [t[0] for t in results]
+        return results
+    
+    # verdict_decoder、verdict_generator
+    def _fast_translate_batch1(self, batch, memory_bank, max_length, init_tokens=None, memory_mask=None,
+                              min_length=2, beam_size=3, topic_vec=None):
+
+        batch_size = memory_bank.size(0)
+
+        # dec_states = self.decoder.init_decoder_state(batch.src, memory_bank, with_cache=True)
+        dec_states = self.verdict_decoder.init_decoder_state(batch.src, memory_bank, with_cache=True)
+
+        # Tile states and memory beam_size times.
+        dec_states.map_batch_fn(
+            lambda state, dim: tile(state, beam_size, dim=dim))
+        memory_bank = tile(memory_bank, beam_size, dim=0)
+        init_tokens = tile(init_tokens, beam_size, dim=0)
+        memory_mask = tile(memory_mask, beam_size, dim=0)
+        if topic_vec is not None: # 增加判断，如果topic_vec为空，则不进行下面的部分
+            if self.args.split_noise:
+                topic_vec = (tile(topic_vec[0], beam_size, dim=0),
+                            tile(topic_vec[1], beam_size, dim=0))
+            else:
+                topic_vec = tile(topic_vec, beam_size, dim=0)
+
+        batch_offset = torch.arange(
+            batch_size, dtype=torch.long, device=self.device)
+        beam_offset = torch.arange(
+            0,
+            batch_size * beam_size,
+            step=beam_size,
+            dtype=torch.long,
+            device=self.device)
+
+        alive_seq = torch.full(
+            [batch_size * beam_size, 1],
+            self.start_token,
+            dtype=torch.long,
+            device=self.device)
+
+        # Give full probability to the first beam on the first step.
+        topk_log_probs = (
+            torch.tensor([0.0] + [float("-inf")] * (beam_size - 1),
+                         device=self.device).repeat(batch_size))
+
+        # Structure that holds finished hypotheses.
+        hypotheses = [[] for _ in range(batch_size)]
+
+        results = [[] for _ in range(batch_size)]
+
+        for step in range(max_length):
+            if step > 0:
+                init_tokens = None
+            # Decoder forward.
+            decoder_input = alive_seq[:, -1].view(1, -1)
+            decoder_input = decoder_input.transpose(0, 1)
+
+            # dec_out, dec_states, _ = self.decoder(decoder_input, memory_bank, dec_states, init_tokens, step=step,
+            #                                       memory_masks=memory_mask, topic_vec=topic_vec, requires_att=True)
+            dec_out, dec_states, _ = self.verdict_decoder(decoder_input, memory_bank, dec_states, init_tokens, step=step,
+                                                  memory_masks=memory_mask, topic_vec=topic_vec, requires_att=True)
+
+            # Generator forward.
+            # log_probs = self.generator(dec_out.transpose(0, 1).squeeze(0))
+            log_probs = self.verdict_generator(dec_out.transpose(0, 1).squeeze(0))
+
+            vocab_size = log_probs.size(-1)
+
+            if step < min_length:
+                log_probs[:, self.end_token] = -1e20
+
+            if self.args.block_trigram:
+                cur_len = alive_seq.size(1)
+                if(cur_len > 3):
+                    for i in range(alive_seq.size(0)):
+                        fail = False
+                        words = [int(w) for w in alive_seq[i]]
+                        if(len(words) <= 3):
+                            continue
+                        trigrams = [(words[i-1], words[i], words[i+1]) for i in range(1, len(words)-1)]
+                        trigram = tuple(trigrams[-1])
+                        if trigram in trigrams[:-1]:
+                            fail = True
+                        if fail:
+                            log_probs[i] = -1e20
+
+            # Multiply probs by the beam probability.
+            log_probs += topk_log_probs.view(-1).unsqueeze(1)
+
+            alpha = self.args.alpha
+            length_penalty = ((5.0 + (step + 1)) / 6.0) ** alpha
+
+            # Flatten probs into a list of possibilities.
+            curr_scores = log_probs / length_penalty
+
+            curr_scores = curr_scores.reshape(-1, beam_size * vocab_size)
+            topk_scores, topk_ids = curr_scores.topk(beam_size, dim=-1)
+
+            # Recover log probs.
+            topk_log_probs = topk_scores * length_penalty
+
+            # Resolve beam origin and true word ids.
+            topk_beam_index = topk_ids.div(vocab_size)
+            topk_ids = topk_ids.fmod(vocab_size)
+
+            # Map beam_index to batch_index in the flat representation.
+            batch_index = (
+                    topk_beam_index
+                    + beam_offset[:topk_beam_index.size(0)].unsqueeze(1))
+            select_indices = batch_index.view(-1)
+
+            # Append last prediction.
+            alive_seq = torch.cat(
+                [alive_seq.index_select(0, select_indices.long()),
+                 topk_ids.view(-1, 1)], -1)
+
+            is_finished = topk_ids.eq(self.end_token)
+            if step + 1 == max_length:
+                is_finished.fill_(1)
+            # End condition is top beam is finished.
+            end_condition = is_finished[:, 0].eq(1)
+            # Save finished hypotheses.
+            if is_finished.any():
+                predictions = alive_seq.view(-1, beam_size, alive_seq.size(-1))
+                for i in range(is_finished.size(0)):
+                    b = batch_offset[i]
+                    if end_condition[i]:
+                        is_finished[i].fill_(1)
+                    finished_hyp = is_finished[i].nonzero().view(-1)
+                    # Store finished hypotheses for this batch.
+                    for j in finished_hyp:
+                        hypotheses[b].append((
+                            topk_scores[i, j],
+                            predictions[i, j, 1:]))
+                    # If the batch reached the end, save the n_best hypotheses.
+                    if end_condition[i]:
+                        best_hyp = sorted(
+                            hypotheses[b], key=lambda x: x[0], reverse=True)
+                        _, pred = best_hyp[0]
+                        results[b].append(pred)
+                non_finished = end_condition.eq(0).nonzero().view(-1)
+                # If all sentences are translated, no need to go further.
+                if len(non_finished) == 0:
+                    break
+                # Remove finished batches for the next step.
+                topk_log_probs = topk_log_probs.index_select(0, non_finished)
+                batch_index = batch_index.index_select(0, non_finished)
+                batch_offset = batch_offset.index_select(0, non_finished)
+                alive_seq = predictions.index_select(0, non_finished) \
+                    .view(-1, alive_seq.size(-1))
+            # Reorder states.
+            select_indices = batch_index.view(-1)
+            if memory_bank is not None:
+                memory_bank = memory_bank.index_select(0, select_indices.long())
+            if memory_mask is not None:
+                memory_mask = memory_mask.index_select(0, select_indices.long())
+            if init_tokens is not None:
+                init_tokens = init_tokens.index_select(0, select_indices.long())
+            if topic_vec is not None:
+                if self.args.split_noise:
+                    topic_vec = (topic_vec[0].index_select(0, select_indices.long()),
+                                 topic_vec[1].index_select(0, select_indices.long()))
+                else:
+                    topic_vec = topic_vec.index_select(0, select_indices.long())
+            dec_states.map_batch_fn(
+                lambda state, dim: state.index_select(dim, select_indices.long()))
+
+        results = [t[0] for t in results]
+        return results
+    
+    # pros_decoder、pros_generator
+    def _fast_translate_batch2(self, batch, memory_bank, max_length, init_tokens=None, memory_mask=None,
+                              min_length=2, beam_size=3, topic_vec=None):
+
+        batch_size = memory_bank.size(0)
+
+        dec_states = self.pros_decoder.init_decoder_state(batch.src, memory_bank, with_cache=True)
+
+        # Tile states and memory beam_size times.
+        dec_states.map_batch_fn(
+            lambda state, dim: tile(state, beam_size, dim=dim))
+        memory_bank = tile(memory_bank, beam_size, dim=0)
+        init_tokens = tile(init_tokens, beam_size, dim=0)
+        memory_mask = tile(memory_mask, beam_size, dim=0)
+        if topic_vec is not None: # 增加判断，如果topic_vec为空，则不进行下面的部分
+            if self.args.split_noise:
+                topic_vec = (tile(topic_vec[0], beam_size, dim=0),
+                            tile(topic_vec[1], beam_size, dim=0))
+            else:
+                topic_vec = tile(topic_vec, beam_size, dim=0)
+
+        batch_offset = torch.arange(
+            batch_size, dtype=torch.long, device=self.device)
+        beam_offset = torch.arange(
+            0,
+            batch_size * beam_size,
+            step=beam_size,
+            dtype=torch.long,
+            device=self.device)
+
+        alive_seq = torch.full(
+            [batch_size * beam_size, 1],
+            self.start_token,
+            dtype=torch.long,
+            device=self.device)
+
+        # Give full probability to the first beam on the first step.
+        topk_log_probs = (
+            torch.tensor([0.0] + [float("-inf")] * (beam_size - 1),
+                         device=self.device).repeat(batch_size))
+
+        # Structure that holds finished hypotheses.
+        hypotheses = [[] for _ in range(batch_size)]
+
+        results = [[] for _ in range(batch_size)]
+
+        for step in range(max_length):
+            if step > 0:
+                init_tokens = None
+            # Decoder forward.
+            decoder_input = alive_seq[:, -1].view(1, -1)
+            decoder_input = decoder_input.transpose(0, 1)
+
+            dec_out, dec_states, _ = self.pros_decoder(decoder_input, memory_bank, dec_states, init_tokens, step=step,
+                                                  memory_masks=memory_mask, topic_vec=topic_vec, requires_att=True)
+
+            # Generator forward.
+            log_probs = self.pros_generator(dec_out.transpose(0, 1).squeeze(0))
+
+            vocab_size = log_probs.size(-1)
+
+            if step < min_length:
+                log_probs[:, self.end_token] = -1e20
+
+            if self.args.block_trigram:
+                cur_len = alive_seq.size(1)
+                if(cur_len > 3):
+                    for i in range(alive_seq.size(0)):
+                        fail = False
+                        words = [int(w) for w in alive_seq[i]]
+                        if(len(words) <= 3):
+                            continue
+                        trigrams = [(words[i-1], words[i], words[i+1]) for i in range(1, len(words)-1)]
+                        trigram = tuple(trigrams[-1])
+                        if trigram in trigrams[:-1]:
+                            fail = True
+                        if fail:
+                            log_probs[i] = -1e20
+
+            # Multiply probs by the beam probability.
+            log_probs += topk_log_probs.view(-1).unsqueeze(1)
+
+            alpha = self.args.alpha
+            length_penalty = ((5.0 + (step + 1)) / 6.0) ** alpha
+
+            # Flatten probs into a list of possibilities.
+            curr_scores = log_probs / length_penalty
+
+            curr_scores = curr_scores.reshape(-1, beam_size * vocab_size)
+            topk_scores, topk_ids = curr_scores.topk(beam_size, dim=-1)
+
+            # Recover log probs.
+            topk_log_probs = topk_scores * length_penalty
+
+            # Resolve beam origin and true word ids.
+            topk_beam_index = topk_ids.div(vocab_size)
+            topk_ids = topk_ids.fmod(vocab_size)
+
+            # Map beam_index to batch_index in the flat representation.
+            batch_index = (
+                    topk_beam_index
+                    + beam_offset[:topk_beam_index.size(0)].unsqueeze(1))
+            select_indices = batch_index.view(-1)
+
+            # Append last prediction.
+            alive_seq = torch.cat(
+                [alive_seq.index_select(0, select_indices.long()),
+                 topk_ids.view(-1, 1)], -1)
+
+            is_finished = topk_ids.eq(self.end_token)
+            if step + 1 == max_length:
+                is_finished.fill_(1)
+            # End condition is top beam is finished.
+            end_condition = is_finished[:, 0].eq(1)
+            # Save finished hypotheses.
+            if is_finished.any():
+                predictions = alive_seq.view(-1, beam_size, alive_seq.size(-1))
+                for i in range(is_finished.size(0)):
+                    b = batch_offset[i]
+                    if end_condition[i]:
+                        is_finished[i].fill_(1)
+                    finished_hyp = is_finished[i].nonzero().view(-1)
+                    # Store finished hypotheses for this batch.
+                    for j in finished_hyp:
+                        hypotheses[b].append((
+                            topk_scores[i, j],
+                            predictions[i, j, 1:]))
+                    # If the batch reached the end, save the n_best hypotheses.
+                    if end_condition[i]:
+                        best_hyp = sorted(
+                            hypotheses[b], key=lambda x: x[0], reverse=True)
+                        _, pred = best_hyp[0]
+                        results[b].append(pred)
+                non_finished = end_condition.eq(0).nonzero().view(-1)
+                # If all sentences are translated, no need to go further.
+                if len(non_finished) == 0:
+                    break
+                # Remove finished batches for the next step.
+                topk_log_probs = topk_log_probs.index_select(0, non_finished)
+                batch_index = batch_index.index_select(0, non_finished)
+                batch_offset = batch_offset.index_select(0, non_finished)
+                alive_seq = predictions.index_select(0, non_finished) \
+                    .view(-1, alive_seq.size(-1))
+            # Reorder states.
+            select_indices = batch_index.view(-1)
+            if memory_bank is not None:
+                memory_bank = memory_bank.index_select(0, select_indices.long())
+            if memory_mask is not None:
+                memory_mask = memory_mask.index_select(0, select_indices.long())
+            if init_tokens is not None:
+                init_tokens = init_tokens.index_select(0, select_indices.long())
+            if topic_vec is not None:
+                if self.args.split_noise:
+                    topic_vec = (topic_vec[0].index_select(0, select_indices.long()),
+                                 topic_vec[1].index_select(0, select_indices.long()))
+                else:
+                    topic_vec = topic_vec.index_select(0, select_indices.long())
+            dec_states.map_batch_fn(
+                lambda state, dim: state.index_select(dim, select_indices.long()))
+
+        results = [t[0] for t in results]
+        return results
+    
+    # cons_decoder、cons_generator
+    def _fast_translate_batch3(self, batch, memory_bank, max_length, init_tokens=None, memory_mask=None,
+                              min_length=2, beam_size=3, topic_vec=None):
+
+        batch_size = memory_bank.size(0)
+
+        dec_states = self.cons_decoder.init_decoder_state(batch.src, memory_bank, with_cache=True)
+
+        # Tile states and memory beam_size times.
+        dec_states.map_batch_fn(
+            lambda state, dim: tile(state, beam_size, dim=dim))
+        memory_bank = tile(memory_bank, beam_size, dim=0)
+        init_tokens = tile(init_tokens, beam_size, dim=0)
+        memory_mask = tile(memory_mask, beam_size, dim=0)
+        if topic_vec is not None: # 增加判断，如果topic_vec为空，则不进行下面的部分
+            if self.args.split_noise:
+                topic_vec = (tile(topic_vec[0], beam_size, dim=0),
+                            tile(topic_vec[1], beam_size, dim=0))
+            else:
+                topic_vec = tile(topic_vec, beam_size, dim=0)
+
+        batch_offset = torch.arange(
+            batch_size, dtype=torch.long, device=self.device)
+        beam_offset = torch.arange(
+            0,
+            batch_size * beam_size,
+            step=beam_size,
+            dtype=torch.long,
+            device=self.device)
+
+        alive_seq = torch.full(
+            [batch_size * beam_size, 1],
+            self.start_token,
+            dtype=torch.long,
+            device=self.device)
+
+        # Give full probability to the first beam on the first step.
+        topk_log_probs = (
+            torch.tensor([0.0] + [float("-inf")] * (beam_size - 1),
+                         device=self.device).repeat(batch_size))
+
+        # Structure that holds finished hypotheses.
+        hypotheses = [[] for _ in range(batch_size)]
+
+        results = [[] for _ in range(batch_size)]
+
+        for step in range(max_length):
+            if step > 0:
+                init_tokens = None
+            # Decoder forward.
+            decoder_input = alive_seq[:, -1].view(1, -1)
+            decoder_input = decoder_input.transpose(0, 1)
+
+            dec_out, dec_states, _ = self.cons_decoder(decoder_input, memory_bank, dec_states, init_tokens, step=step,
+                                                  memory_masks=memory_mask, topic_vec=topic_vec, requires_att=True)
+
+            # Generator forward.
+            log_probs = self.cons_generator(dec_out.transpose(0, 1).squeeze(0))
 
             vocab_size = log_probs.size(-1)
 
@@ -1067,13 +1560,13 @@ class Model(nn.Module):
             # summary = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=1-mask_src_mapped,
             #                                      min_length=2, beam_size=self.beam_size,
             #                                      topic_vec=topic_vec_ge)
-            verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            verdict = self._fast_translate_batch1(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=self.beam_size,
                                                  topic_vec=verdict_topic_vec_ge)
-            pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            pros = self._fast_translate_batch2(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=self.beam_size,
                                                  topic_vec=pros_topic_vec_ge)
-            cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=self.beam_size,
                                                  topic_vec=cons_topic_vec_ge)
             summary = verdict + pros + cons # 是否需要在verdict、pros、cons中剔除[unused13]分隔符，这里拼起来的时候再加上一个分隔符
@@ -1171,13 +1664,13 @@ class Model(nn.Module):
                 #                                      memory_mask=~mask_src_mapped,
                 #                                      min_length=2, beam_size=1,
                 #                                      topic_vec=topic_vec_ge)
-                verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                verdict = self._fast_translate_batch1(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=verdict_topic_vec_ge)
-                pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                pros = self._fast_translate_batch2(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=pros_topic_vec_ge)
-                cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=cons_topic_vec_ge)
                 summary = verdict + pros + cons
@@ -1191,13 +1684,13 @@ class Model(nn.Module):
             #                                      memory_mask=~mask_src_mapped,
             #                                      min_length=2, beam_size=self.args.beam_size,
             #                                      topic_vec=topic_vec_ge)
-            verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            verdict = self._fast_translate_batch1(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=verdict_topic_vec_ge)
-            pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            pros = self._fast_translate_batch2(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=pros_topic_vec_ge)
-            cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=cons_topic_vec_ge)
             rl_loss, verdict_decode_output, pros_decode_output, cons_decode_output = None, None, None, None
