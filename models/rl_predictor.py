@@ -53,7 +53,10 @@ class Translator(object):
 
         self.args = args
         self.model = model
-        self.generator = self.model.generator
+        # self.generator = self.model.generator # 对应修改为三个，没用到？
+        self.verdict_generator = self.model.verdict_generator
+        self.pros_generator = self.model.pros_generator
+        self.cons_generator = self.model.cons_generator
         self.tokenizer = tokenizer
         self.vocab = tokenizer.vocab
         self.start_token = self.vocab['[unused1]']
