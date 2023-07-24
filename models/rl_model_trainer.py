@@ -5,7 +5,7 @@ from tensorboardX import SummaryWriter
 
 import distributed
 from models.reporter import ReportMgr, Statistics
-from models.loss import abs_loss, CrossEntropyLossCompute
+from models.loss import abs_loss, CrossEntropyLossCompute, abs_loss1, abs_loss2, abs_loss3
 from models.rl_predictor import build_predictor
 from models import data_loader
 from models.data_loader import load_dataset
@@ -53,11 +53,14 @@ def build_trainer(args, device_id, model, optims, tokenizer):
                'PAD': tokenizer.vocab['[PAD]'], 'SEG': tokenizer.vocab['[unused3]'],
                'UNK': tokenizer.vocab['[UNK]']}
 
-    gen_loss = abs_loss(args, model.generator, symbols, tokenizer.vocab, device, train=True)
+    # gen_loss = abs_loss(args, model.generator, symbols, tokenizer.vocab, device, train=True)
+    gen_loss1 = abs_loss1(args, model.verdict_generator, symbols, tokenizer.vocab, device, train=True)
+    gen_loss2 = abs_loss2(args, model.pros_generator, symbols, tokenizer.vocab, device, train=True)
+    gen_loss3 = abs_loss3(args, model.cons_generator, symbols, tokenizer.vocab, device, train=True)
 
     pn_loss = CrossEntropyLossCompute().to(device)
 
-    trainer = Trainer(args, model, optims, tokenizer, gen_loss, pn_loss,
+    trainer = Trainer(args, model, optims, tokenizer, gen_loss1, gen_loss2, gen_loss3, pn_loss,
                       grad_accum_count, n_gpu, gpu_rank, report_manager)
 
     # print(tr)
@@ -93,7 +96,7 @@ class Trainer(object):
                 Thus nothing will be saved if this parameter is None
     """
 
-    def __init__(self,  args, model,  optims, tokenizer, abs_loss, pn_loss,
+    def __init__(self,  args, model,  optims, tokenizer, abs_loss1, abs_loss2, abs_loss3, pn_loss,
                  grad_accum_count=1, n_gpu=1, gpu_rank=1,
                  report_manager=None):
         # Basic attributes.
@@ -107,7 +110,10 @@ class Trainer(object):
         self.gpu_rank = gpu_rank
         self.report_manager = report_manager
 
-        self.abs_loss = abs_loss
+        # self.abs_loss = abs_loss
+        self.abs_loss1 = abs_loss1
+        self.abs_loss2 = abs_loss2
+        self.abs_loss3 = abs_loss3
         self.pn_loss = pn_loss
 
         assert grad_accum_count > 0
@@ -156,8 +162,16 @@ class Trainer(object):
                 if self.n_gpu == 0 or (i % self.n_gpu == self.gpu_rank):
 
                     true_batchs.append(batch)
-                    tgt_tokens += batch.tgt[:, 1:].ne(self.abs_loss.padding_idx).sum().item()
-                    src_tokens += batch.src[:, 1:].ne(self.abs_loss.padding_idx).sum().item()
+                    # tgt_tokens += batch.tgt[:, 1:].ne(self.abs_loss.padding_idx).sum().item()
+                    tgt_tokens  =  tgt_tokens + \
+                                  batch.tgt[:, 1:].ne(self.abs_loss1.padding_idx).sum().item() + \
+                                  batch.tgt[:, 1:].ne(self.abs_loss2.padding_idx).sum().item() + \
+                                  batch.tgt[:, 1:].ne(self.abs_loss3.padding_idx).sum().item()
+                    # src_tokens += batch.src[:, 1:].ne(self.abs_loss.padding_idx).sum().item()
+                    src_tokens  = src_tokens + \
+                                  batch.src[:, 1:].ne(self.abs_loss1.padding_idx).sum().item() + \
+                                  batch.src[:, 1:].ne(self.abs_loss2.padding_idx).sum().item() + \
+                                  batch.src[:, 1:].ne(self.abs_loss3.padding_idx).sum().item()
                     tgt_labels += sum([len(l)+1 for l in batch.tgt_labels])
                     sents += batch.src.size(0)
                     examples += batch.tgt.size(0)
@@ -220,9 +234,11 @@ class Trainer(object):
 
         for batch in true_batchs:
             if self.args.pretrain:
-                pn_output, decode_output, topic_loss, _ = self.model.pretrain(batch)
+                # pn_output, decode_output, topic_loss, _ = self.model.pretrain(batch)
+                pn_output, verdict_decode_output, pros_decode_output, cons_decode_output, topic_loss, _ = self.model.pretrain(batch)
             else:
-                rl_loss, decode_output, topic_loss, _, _ = self.model(batch)
+                # rl_loss, decode_output, topic_loss, _, _ = self.model(batch)
+                rl_loss, verdict_decode_output, pros_decode_output, cons_decode_output, topic_loss, _, _ = self.model(batch)
 
             tgt_tokens, src_tokens, tgt_labels, sents, examples = normalization
 
@@ -241,11 +257,26 @@ class Trainer(object):
                 report_stats.update(pn_stats)
 
                 # Generation loss
-                abs_stats = self.abs_loss(batch, decode_output, self.args.generator_shard_size,
+                # abs_stats = self.abs_loss(batch, decode_output, self.args.generator_shard_size,
+                #                           tgt_tokens, retain_graph=False)
+                abs_stats1 = self.abs_loss1(batch, verdict_decode_output, self.args.generator_shard_size,
+                                          tgt_tokens, retain_graph=True) # retain_graph=True来指定在计算梯度时保留计算图，以便后续的反向传播或访问中间结果
+                abs_stats2 = self.abs_loss2(batch, pros_decode_output, self.args.generator_shard_size,
+                                          tgt_tokens, retain_graph=True)
+                abs_stats3 = self.abs_loss3(batch, cons_decode_output, self.args.generator_shard_size,
                                           tgt_tokens, retain_graph=False)
-                abs_stats.n_docs = len(batch)
-                total_stats.update(abs_stats)
-                report_stats.update(abs_stats)
+                # abs_stats.n_docs = len(batch)
+                abs_stats1.n_docs = len(batch)
+                abs_stats2.n_docs = len(batch)
+                abs_stats3.n_docs = len(batch)
+                # total_stats.update(abs_stats)
+                total_stats.update(abs_stats1)
+                total_stats.update(abs_stats2)
+                total_stats.update(abs_stats3)
+                # report_stats.update(abs_stats)
+                report_stats.update(abs_stats1)
+                report_stats.update(abs_stats2)
+                report_stats.update(abs_stats3)
 
             else:
                 if self.args.topic_model:
@@ -265,11 +296,26 @@ class Trainer(object):
                 # report_stats.update(critic_stats)
 
                 # Generation loss
-                abs_stats = self.abs_loss(batch, decode_output, self.args.generator_shard_size,
+                # abs_stats = self.abs_loss(batch, decode_output, self.args.generator_shard_size,
+                #                           tgt_tokens, retain_graph=False)
+                abs_stats1 = self.abs_loss1(batch, verdict_decode_output, self.args.generator_shard_size,
+                                          tgt_tokens, retain_graph=True)
+                abs_stats2 = self.abs_loss2(batch, pros_decode_output, self.args.generator_shard_size,
+                                          tgt_tokens, retain_graph=True)
+                abs_stats3 = self.abs_loss3(batch, cons_decode_output, self.args.generator_shard_size,
                                           tgt_tokens, retain_graph=False)
-                abs_stats.n_docs = len(batch)
-                total_stats.update(abs_stats)
-                report_stats.update(abs_stats)
+                # abs_stats.n_docs = len(batch)
+                abs_stats1.n_docs = len(batch)
+                abs_stats2.n_docs = len(batch)
+                abs_stats3.n_docs = len(batch)
+                # total_stats.update(abs_stats)
+                total_stats.update(abs_stats1)
+                total_stats.update(abs_stats2)
+                total_stats.update(abs_stats3)
+                # report_stats.update(abs_stats)
+                report_stats.update(abs_stats1)
+                report_stats.update(abs_stats2)
+                report_stats.update(abs_stats3)
 
         # in case of multi step gradient accumulation,
         # update only after accum batches
