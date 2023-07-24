@@ -60,12 +60,13 @@ class Model(nn.Module):
         self.hier_encoder = TransformerEncoder(self.hidden_size, args.hier_ff_size, args.hier_heads,
                                                args.hier_dropout, args.hier_layers)
 
-        if args.cust and args.agent:
-            topic_emb_size = self.args.word_emb_size * 3
-        elif args.cust or args.agent:
-            topic_emb_size = self.args.word_emb_size * 2
-        else:
-            topic_emb_size = self.args.word_emb_size * 1
+        # if args.cust and args.agent:
+        #     topic_emb_size = self.args.word_emb_size * 3
+        # elif args.cust or args.agent:
+        #     topic_emb_size = self.args.word_emb_size * 2
+        # else:
+        #     topic_emb_size = self.args.word_emb_size * 1
+        topic_emb_size = self.args.word_emb_size * 1
         # topic_emb_size = self.args.word_emb_size*6 if self.args.split_noise else self.args.word_emb_size*3
         self.pn_decoder = TransformerDecoder(
             self.args.pn_layers, self.args.pn_hidden_size, heads=self.args.pn_heads,
@@ -75,8 +76,8 @@ class Model(nn.Module):
 
         self.pn_generator = PointerNetGenerator(self.hidden_size, self.hidden_size, self.hidden_size)
         
-        # 需要修改的解码器部分，三个解码器
-        self.decoder = TransformerDecoder(
+        # 修改为三个解码器
+        self.verdict_decoder = TransformerDecoder(
             self.args.dec_layers,
             self.args.dec_hidden_size, heads=self.args.dec_heads,
             d_ff=self.args.dec_ff_size, dropout=self.args.dec_dropout,
@@ -84,9 +85,31 @@ class Model(nn.Module):
             topic_dim=topic_emb_size, split_noise=self.args.split_noise
         )
 
-        self.generator = Generator(self.vocab_size, self.args.dec_hidden_size, self.pad_token)
+        self.pros_decoder = TransformerDecoder(
+            self.args.dec_layers,
+            self.args.dec_hidden_size, heads=self.args.dec_heads,
+            d_ff=self.args.dec_ff_size, dropout=self.args.dec_dropout,
+            embeddings=tgt_embeddings, topic=self.args.topic_model,
+            topic_dim=topic_emb_size, split_noise=self.args.split_noise
+        )
 
-        self.generator.linear.weight = self.decoder.embeddings.weight
+        self.cons_decoder = TransformerDecoder(
+            self.args.dec_layers,
+            self.args.dec_hidden_size, heads=self.args.dec_heads,
+            d_ff=self.args.dec_ff_size, dropout=self.args.dec_dropout,
+            embeddings=tgt_embeddings, topic=self.args.topic_model,
+            topic_dim=topic_emb_size, split_noise=self.args.split_noise
+        )
+
+        # 对应修改三个生成器
+        self.verdict_generator = Generator(self.vocab_size, self.args.dec_hidden_size, self.pad_token)
+        self.pros_generator = Generator(self.vocab_size, self.args.dec_hidden_size, self.pad_token)
+        self.cons_generator = Generator(self.vocab_size, self.args.dec_hidden_size, self.pad_token)
+
+        # 对应修改三个生成器权重
+        self.verdict_generator.linear.weight = self.verdict_decoder.embeddings.weight
+        self.pros_generator.linear.weight = self.pros_decoder.embeddings.weight
+        self.cons_generator.linear.weight = self.cons_decoder.embeddings.weight
 
         # Topic Model
         if self.args.topic_model:
@@ -108,7 +131,15 @@ class Model(nn.Module):
                 self.topic_emb_linear_noise = nn.Linear(self.hidden_size, topic_emb_size)
             else:
                 self.topic_gate_linear = nn.Linear(self.hidden_size + topic_emb_size, topic_emb_size)
-                self.topic_emb_linear = nn.Linear(self.hidden_size, topic_emb_size)
+                self.topic_emb_linear = nn.Linear(self.hidden_size, topic_emb_size) 
+            # 添加一个线性层nn.linear，将一个主题表示映射为三个主题表示
+            self.topic_split_summ_linear01 = nn.Linear(topic_emb_size, topic_emb_size) # 维度不对, 怎么改
+            self.topic_split_summ_linear02 = nn.Linear(topic_emb_size, topic_emb_size)
+            self.topic_split_summ_linear03 = nn.Linear(topic_emb_size, topic_emb_size) 
+            self.topic_split_noise_linear01 = nn.Linear(topic_emb_size, topic_emb_size)
+            self.topic_split_noise_linear02 = nn.Linear(topic_emb_size, topic_emb_size)
+            self.topic_split_noise_linear03 = nn.Linear(topic_emb_size, topic_emb_size)
+
         # else:
         self.pn_init_token = nn.Parameter(torch.empty([1, self.hidden_size]))
 
@@ -117,13 +148,22 @@ class Model(nn.Module):
             if args.share_emb:
                 if args.encoder == 'bert':
                     self.embeddings = self.encoder.model.embeddings.word_embeddings
-                self.generator.linear.weight = self.decoder.embeddings.weight
+                # self.generator.linear.weight = self.decoder.embeddings.weight # 对应修改三个生成器权重
+                self.verdict_generator.linear.weight = self.verdict_decoder.embeddings.weight
+                self.pros_generator.linear.weight = self.pros_decoder.embeddings.weight 
+                self.cons_generator.linear.weight = self.cons_decoder.embeddings.weight
         else:
             # initialize params.
             if args.encoder == "transformer":
                 for module in self.encoder.modules():
                     self._set_parameter_tf(module)
-            for module in self.decoder.modules():
+            # for module in self.decoder.modules():
+            #     self._set_parameter_tf(module)  # 对应初试化三个解码器参数
+            for module in self.verdict_decoder.modules():
+                self._set_parameter_tf(module)
+            for module in self.pros_decoder.modules():
+                self._set_parameter_tf(module)
+            for module in self.cons_decoder.modules():
                 self._set_parameter_tf(module)
             for module in self.sent_encoder.modules():
                 self._set_parameter_tf(module)
@@ -133,7 +173,13 @@ class Model(nn.Module):
                 self._set_parameter_tf(module)
             for p in self.pn_generator.parameters():
                 self._set_parameter_linear(p)
-            for p in self.generator.parameters():
+            # for p in self.generator.parameters():
+            #     self._set_parameter_linear(p) # 对应初始化三个生成器参数
+            for p in self.verdict_generator.parameters():
+                self._set_parameter_linear(p)
+            for p in self.pros_generator.parameters():
+                self._set_parameter_linear(p)
+            for p in self.cons_generator.parameters():
                 self._set_parameter_linear(p)
             if self.args.topic_model:
                 if self.args.split_noise:
@@ -150,14 +196,32 @@ class Model(nn.Module):
                         self._set_parameter_linear(p)
                     for p in self.topic_emb_linear.parameters():
                         self._set_parameter_linear(p)
+                for p in self.topic_split_summ_linear01.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
+                for p in self.topic_split_summ_linear02.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
+                for p in self.topic_split_summ_linear03.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
+                for p in self.topic_split_noise_linear01.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
+                for p in self.topic_split_noise_linear02.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
+                for p in self.topic_split_noise_linear03.parameters(): # 初始化（添加的）线性层参数
+                        self._set_parameter_linear(p)
             self._set_parameter_linear(self.pn_init_token)
             if args.share_emb:
                 if args.encoder == 'bert':
                     self.embeddings = self.encoder.model.embeddings.word_embeddings
                     tgt_embeddings = nn.Embedding(self.vocab_size, self.encoder.model.config.hidden_size, padding_idx=0)
                     tgt_embeddings.weight = copy.deepcopy(self.encoder.model.embeddings.word_embeddings.weight)
-                    self.decoder.embeddings = tgt_embeddings
-                self.generator.linear.weight = self.decoder.embeddings.weight
+                    # self.decoder.embeddings = tgt_embeddings # 对应修改三个解码器embeddings
+                    self.verdict_decoder.embeddings = tgt_embeddings
+                    self.pros_decoder.embeddings = tgt_embeddings
+                    self.cons_decoder.embeddings = tgt_embeddings
+                # self.generator.linear.weight = self.decoder.embeddings.weight # 对应修改三个生成器权重
+                self.verdict_generator.linear.weight = self.verdict_decoder.embeddings.weight
+                self.pros_generator.linear.weight = self.pros_decoder.embeddings.weight
+                self.cons_generator.linear.weight = self.cons_decoder.embeddings.weight
 
         self.to(device)
 
@@ -220,7 +284,7 @@ class Model(nn.Module):
                 new_seg_list.append(torch.tensor([segment_id] * filted_sent.size(0), device=self.device))
                 new_idx_list.append(torch.tensor([tgt_label_sorted[j]] * filted_sent.size(0), device=self.device))
                 if self.args.topic_model:
-                    if filted_sent[0].item() == self.agent_token:
+                    if filted_sent[0].item() == self.agent_token: # 0714待修改
                         agent_mask_list.append(torch.tensor([1] * filted_sent.size(0), dtype=torch.uint8, device=self.device))
                         customer_mask_list.append(torch.tensor([0] * filted_sent.size(0), dtype=torch.uint8, device=self.device))
                     else:
@@ -251,6 +315,43 @@ class Model(nn.Module):
             agent_mask_mapped, customer_mask_mapped = None, None
 
         return src_mapped, seg_mapped, mask_mapped, agent_mask_mapped, customer_mask_mapped, idx_mapped
+    
+    # 0724 w/o agent/cust mask 
+    def _map_src01(self, src, tgt_labels, ex_segs, sep_token=None):
+        src_list = torch.split(src, ex_segs)
+        src_mapped_list = []
+        seg_mapped_list = []
+        idx_mapped_list = []
+        for idx in range(len(ex_segs)):
+            new_src_list = [torch.tensor([self.cls_token], device=self.device)]
+            new_seg_list = [torch.tensor([0], device=self.device)]
+            new_idx_list = [torch.tensor([-1], device=self.device)]
+            tgt_label_sorted = sorted(tgt_labels[idx])
+            src_cand = src_list[idx][tgt_label_sorted]
+            # src_cand = src_list[idx][tgt_labels[idx]]
+            segment_id = 0
+            for j, sent in enumerate(src_cand):
+                filted_sent = sent[sent != self.pad_token][1:]
+                if sep_token is not None:
+                    filted_sent = torch.cat([filted_sent, torch.tensor([sep_token],
+                                             device=self.device)], -1)
+                new_src_list.append(filted_sent)
+                new_seg_list.append(torch.tensor([segment_id] * filted_sent.size(0), device=self.device))
+                new_idx_list.append(torch.tensor([tgt_label_sorted[j]] * filted_sent.size(0), device=self.device))
+                segment_id = 1 - segment_id
+            new_src = torch.cat(new_src_list, 0)[:self.args.max_pos]
+            new_seg = torch.cat(new_seg_list, 0)[:self.args.max_pos]
+            new_idx = torch.cat(new_idx_list, 0)[:self.args.max_pos]
+            src_mapped_list.append(new_src)
+            seg_mapped_list.append(new_seg)
+            idx_mapped_list.append(new_idx)
+
+        src_mapped = pad_sequence(src_mapped_list, batch_first=True, padding_value=self.pad_token)
+        seg_mapped = pad_sequence(seg_mapped_list, batch_first=True, padding_value=self.pad_token)
+        idx_mapped = pad_sequence(idx_mapped_list, batch_first=True, padding_value=-1)
+        mask_mapped = src_mapped.data.ne(self.pad_token)
+
+        return src_mapped, seg_mapped, mask_mapped, idx_mapped
 
     def _base_summary_generate(self, batch, topic_info):
         src = batch.src
@@ -271,7 +372,8 @@ class Model(nn.Module):
         hier = self.hier_encoder(sent_input, sent_mask)
 
         if self.args.topic_model:
-            topic_vec_pn = self._topic_vec_pn(batch, topic_info)
+            # topic_vec_pn = self._topic_vec_pn(batch, topic_info)
+            topic_vec_pn = self._topic_vec_pn01(batch, topic_info)
         else:
             topic_vec_pn = None
 
@@ -291,19 +393,35 @@ class Model(nn.Module):
             # top_vec = self.encoder(src_mapped_emb, 1-mask_src_mapped)
             top_vec = self.encoder(src_mapped_emb, ~mask_src_mapped)
 
-        if self.args.topic_model:
-            topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+        # if self.args.topic_model:
+        #     topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+        # else:
+        #     topic_vec_ge = None
+        if self.args.topic_model: 
+            # topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # verdict_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # pros_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # cons_topic_vec_ge = self.topic_split_linear(topic_vec_ge) # 0719修改
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
         else:
-            topic_vec_ge = None
+            # topic_vec_ge = None
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = None, None, None
 
         # summary_base = self._fast_translate_batch(batch, top_vec, self.max_length,
-        #                                           memory_mask=1-mask_src_mapped,
+        #                                           memory_mask=~mask_src_mapped,
         #                                           min_length=2, beam_size=1,
         #                                           topic_vec=topic_vec_ge)
-        summary_base = self._fast_translate_batch(batch, top_vec, self.max_length,
-                                                  memory_mask=~mask_src_mapped,
-                                                  min_length=2, beam_size=1,
-                                                  topic_vec=topic_vec_ge)
+        verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                 min_length=2, beam_size=1,
+                                                 topic_vec=verdict_topic_vec_ge)
+        pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                min_length=2, beam_size=1,
+                                                topic_vec=pros_topic_vec_ge)
+        cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                min_length=2, beam_size=1,
+                                                topic_vec=cons_topic_vec_ge)
+        summary_base = verdict + pros + cons
         return summary_base
 
     def _rl(self, batch, pn_result, summary_sample, summary_base, gamma=0.95):
@@ -667,6 +785,23 @@ class Model(nn.Module):
                 topic_vec = topic_vec_all.unsqueeze(1).expand(bsz, max_len, -1)
 
         return topic_vec
+    
+    # 0724修改
+    def _topic_vec_pn01(self, batch, topic_info):
+
+        src, ex_segs = batch.src, batch.ex_segs
+        bsz, max_len = len(ex_segs), max(ex_segs)
+        topic_vec_all, topic_vec_cust, topic_vec_agent = topic_info
+
+        if self.args.split_noise:
+            topic_vec_all_summ, topic_vec_all_noise = topic_vec_all
+            topic_vec_summ = topic_vec_all_summ.unsqueeze(1).expand(bsz, max_len, -1)
+            topic_vec_noise = topic_vec_all_noise.unsqueeze(1).expand(bsz, max_len, -1)
+            topic_vec = (topic_vec_summ, topic_vec_noise)
+        else:
+            topic_vec = topic_vec_all.unsqueeze(1).expand(bsz, max_len, -1)
+
+        return topic_vec
 
     def _topic_vec_ge(self, topic_info, agent_mask, cust_mask, idx, vec):
 
@@ -741,6 +876,51 @@ class Model(nn.Module):
             gate = torch.sigmoid(self.topic_gate_linear(torch.cat([mapped_vec, topic_vec], dim=-1)))
             fused_vec = (1-gate) * topic_vec + gate * self.topic_emb_linear(mapped_vec)
         return fused_vec
+    
+    # 0724修改
+    def _topic_vec_ge01(self, topic_info, agent_mask, cust_mask, idx, vec):
+
+        bsz, max_len = agent_mask.size(0), agent_mask.size(1)
+        topic_vec_all, topic_vec_cust, topic_vec_agent = topic_info
+
+        if self.args.split_noise:
+            topic_vec_all_summ, topic_vec_all_noise = topic_vec_all
+            topic_vec_summ = topic_vec_all_summ.unsqueeze(1).expand(bsz, max_len, -1)
+            topic_vec_noise = topic_vec_all_noise.unsqueeze(1).expand(bsz, max_len, -1)
+            topic_vec = (topic_vec_summ, topic_vec_noise)
+        else:
+            topic_vec = topic_vec_all.unsqueeze(1).expand(bsz, max_len, -1)
+
+        vec = torch.cat([torch.zeros([bsz, vec.size(-1)], device=self.device).unsqueeze(1), vec], 1)
+        mapped_vec = torch.cat([vec[i].index_select(0, idx[i]+1).unsqueeze(0) for i in range(bsz)], 0)
+
+        if self.args.split_noise:
+            gate_summ = torch.sigmoid(self.topic_gate_linear_summ(torch.cat([mapped_vec, topic_vec[0]], dim=-1)))
+            fused_vec_summ = (1-gate_summ) * topic_vec[0] + gate_summ * self.topic_emb_linear_summ(mapped_vec)
+
+            gate_noise = torch.sigmoid(self.topic_gate_linear_noise(torch.cat([mapped_vec, topic_vec[1]], dim=-1)))
+            fused_vec_noise = (1-gate_noise) * topic_vec[1] + gate_noise * self.topic_emb_linear_noise(mapped_vec)
+
+            verdict_fused_vec_summ = self.topic_split_summ_linear01(fused_vec_summ)
+            pros_fused_vec_summ = self.topic_split_summ_linear02(fused_vec_summ)
+            cons_fused_vec_summ = self.topic_split_summ_linear03(fused_vec_summ)
+            verdict_fused_vec_noise = self.topic_split_noise_linear01(fused_vec_noise) 
+            pros_fused_vec_noise = self.topic_split_noise_linear02(fused_vec_noise)
+            cons_fused_vec_noise = self.topic_split_noise_linear03(fused_vec_noise)
+            # fused_vec = (fused_vec_summ, fused_vec_noise)
+            verdict_fused_vec = (verdict_fused_vec_summ, verdict_fused_vec_noise)
+            pros_fused_vec = (pros_fused_vec_summ, pros_fused_vec_noise)
+            cons_fused_vec = (cons_fused_vec_summ, cons_fused_vec_noise)
+        else:
+            gate = torch.sigmoid(self.topic_gate_linear(torch.cat([mapped_vec, topic_vec], dim=-1)))
+            fused_vec = (1-gate) * topic_vec + gate * self.topic_emb_linear(mapped_vec)
+            
+            verdict_fused_vec = self.topic_split_summ_linear01(fused_vec) 
+            pros_fused_vec = self.topic_split_summ_linear02(fused_vec) 
+            cons_fused_vec = self.topic_split_summ_linear03(fused_vec)
+
+        # return fused_vec
+        return verdict_fused_vec, pros_fused_vec, cons_fused_vec
 
     def _add_mask(self, src, mask_src):
         pm_index = torch.empty_like(mask_src).float().uniform_().le(self.args.mask_token_prob)
@@ -762,7 +942,7 @@ class Model(nn.Module):
         mask_src = batch.mask_src
         tgt = batch.tgt
         tgt_labels = batch.tgt_labels
-        ex_segs = batch.ex_segs
+        ex_segs = batch.ex_segs # 贪心抽取出的句子编号，eg：[91]
 
         tgt_onehot_labels, dup_mask = self._index_2_onehot(tgt_labels, ex_segs)
         setattr(batch, 'pn_tgt', tgt_onehot_labels)
@@ -771,8 +951,8 @@ class Model(nn.Module):
 
         # sent encoding
         src_emb = self.embeddings(src)
-        print("*******len(src_emb):", len(src_emb)) # 2023.7.9：查看是否src_emb长度过长
-        print("*******len(mask_src):", len(mask_src))
+        # print("*******len(src_emb):", len(src_emb)) # 2023.7.9：查看是否src_emb长度过长
+        # print("*******len(mask_src):", len(mask_src))
         # sent_hid = self.sent_encoder(src_emb, 1-mask_src)[:, 0, :]
         sent_hid = self.sent_encoder(src_emb, ~mask_src)[:, 0, :]
 
@@ -795,17 +975,9 @@ class Model(nn.Module):
             else:
                 summ_all, summ_customer, summ_agent = None, None, None
             topic_loss, topic_info = self.topic_model(all_bow, customer_bow, agent_bow,
-                                                      summ_all, summ_customer, summ_agent)
-            # 2023.7.9 改三个部分解码
-            # verdict_topic_loss, verdict_topic_info = self.topic_model(all_bow, all_bow, all_bow,
-            #                                           summ_all, summ_all, summ_all)
-            # pros_topic_loss, pros_topic_info = self.topic_model(customer_bow, customer_bow, customer_bow,
-            #                                           summ_customer, summ_customer, summ_customer)
-            # cons_topic_loss, cons_topic_info = self.topic_model(agent_bow, agent_bow, agent_bow,
-            #                                           summ_agent, summ_agent, summ_agent)
-            # topic_loss = self.args.loss_lambda * (verdict_topic_loss + pros_topic_loss + cons_topic_loss)
+                                                      summ_all, summ_customer, summ_agent) # 0714：topic_info相当于把三个部分拼在一起传，在后面使用的时候我们分开就可以
             topic_loss = self.args.loss_lambda * topic_loss
-            topic_vec_pn = self._topic_vec_pn(batch, topic_info)
+            topic_vec_pn = self._topic_vec_pn01(batch, topic_info)
         else:
             topic_loss, topic_vec_pn = None, None
 
@@ -835,9 +1007,13 @@ class Model(nn.Module):
         if self.training:
             src_mapped, segs_mapped, mask_src_mapped, agent_mask, customer_mask, idx_mapped = \
                 self._map_src(src, tgt_labels, ex_segs, self.seg_token)
+            # src_mapped, segs_mapped, mask_src_mapped, idx_mapped = \
+            #     self._map_src01(src, tgt_labels, ex_segs, self.seg_token) # 0724修改
         else:
             src_mapped, segs_mapped, mask_src_mapped, agent_mask, customer_mask, idx_mapped = \
                 self._map_src(src, pn_result, ex_segs, self.seg_token)
+            # src_mapped, segs_mapped, mask_src_mapped, idx_mapped = \
+            #     self._map_src01(src, pn_result, ex_segs, self.seg_token) # 0724修改
 
         # encoding
         if self.args.encoder == "bert":
@@ -847,29 +1023,62 @@ class Model(nn.Module):
             # top_vec = self.encoder(src_mapped_emb, 1-mask_src_mapped)
             top_vec = self.encoder(src_mapped_emb, ~mask_src_mapped)
 
-        if self.args.topic_model:
-            topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+        if self.args.topic_model: 
+            # topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # verdict_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # pros_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # cons_topic_vec_ge = self.topic_split_linear(topic_vec_ge) # 0719修改
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
         else:
-            topic_vec_ge = None
+            # topic_vec_ge = None
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = None, None, None
+
         # decoding
         if self.training:
-            dec_state = self.decoder.init_decoder_state(src, top_vec)
+            # dec_state = self.decoder.init_decoder_state(src, top_vec)
+            verdict_dec_state = self.verdict_decoder.init_decoder_state(src, top_vec)
+            pros_dec_state = self.pros_decoder.init_decoder_state(src, top_vec)
+            cons_dec_state = self.cons_decoder.init_decoder_state(src, top_vec)
+
             # decode_output, _, _ = self.decoder(tgt[:, :-1], top_vec, dec_state,
             #                                   memory_masks=1-mask_src_mapped,
             #                                   topic_vec=topic_vec_ge)
-            decode_output, _, _ = self.decoder(tgt[:, :-1], top_vec, dec_state,
+            # decode_output, _, _ = self.decoder(tgt[:, :-1], top_vec, dec_state,
+            #                                    memory_masks=~mask_src_mapped,
+            #                                    topic_vec=topic_vec_ge) # 直接用 topic_vec=三个部分分开的topic_info_v/p/c, 引入noise, 但是存在维度不一致，按照topic_vec的维度处理一下topic_info
+            # topic_vec（topic_vec_ge）对应论文中的topic information
+            # topic_vec_ge由topic_info, agent_mask, customer_mask, idx_mapped, hier计算得出，hier对应encoder memories
+
+            verdict_decode_output, _, _ = self.verdict_decoder(tgt[:, :-1], top_vec, verdict_dec_state,
                                                memory_masks=~mask_src_mapped,
-                                               topic_vec=topic_vec_ge)
+                                               topic_vec=verdict_topic_vec_ge)
+            pros_decode_output, _, _ = self.pros_decoder(tgt[:, :-1], top_vec, pros_dec_state,
+                                               memory_masks=~mask_src_mapped,
+                                               topic_vec=pros_topic_vec_ge)
+            cons_decode_output, _, _ = self.cons_decoder(tgt[:, :-1], top_vec, cons_dec_state,
+                                               memory_masks=~mask_src_mapped,
+                                               topic_vec=cons_topic_vec_ge)
             summary = None
         else:
-            decode_output = None
+            # decode_output = None
+            verdict_decode_output, pros_decode_output, cons_decode_output = None, None, None
+
             # summary = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=1-mask_src_mapped,
             #                                      min_length=2, beam_size=self.beam_size,
             #                                      topic_vec=topic_vec_ge)
-            summary = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+            verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=self.beam_size,
-                                                 topic_vec=topic_vec_ge)
-        return pn_result, decode_output, topic_loss, summary
+                                                 topic_vec=verdict_topic_vec_ge)
+            pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                 min_length=2, beam_size=self.beam_size,
+                                                 topic_vec=pros_topic_vec_ge)
+            cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                 min_length=2, beam_size=self.beam_size,
+                                                 topic_vec=cons_topic_vec_ge)
+            summary = verdict + pros + cons # 是否需要在verdict、pros、cons中剔除[unused13]分隔符，这里拼起来的时候再加上一个分隔符
+        # return pn_result, decode_output, topic_loss, summary
+        return pn_result, verdict_decode_output, pros_decode_output, cons_decode_output, topic_loss, summary
 
     def forward(self, batch):
 
@@ -907,7 +1116,8 @@ class Model(nn.Module):
             topic_loss, topic_info = self.topic_model(all_bow, customer_bow, agent_bow,
                                                       summ_all, summ_customer, summ_agent)
             topic_loss = self.args.loss_lambda * topic_loss
-            topic_vec_pn = self._topic_vec_pn(batch, topic_info)
+            # topic_vec_pn = self._topic_vec_pn(batch, topic_info)
+            topic_vec_pn = self._topic_vec_pn01(batch, topic_info)
         else:
             topic_loss, topic_vec_pn, topic_info = None, None, None
 
@@ -928,29 +1138,49 @@ class Model(nn.Module):
             # top_vec = self.encoder(src_mapped_emb, 1-mask_src_mapped)
             top_vec = self.encoder(src_mapped_emb, ~mask_src_mapped)
 
-        if self.args.topic_model:
-            topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+        if self.args.topic_model: 
+            # topic_vec_ge = self._topic_vec_ge(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
+            # verdict_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # pros_topic_vec_ge = self.topic_split_linear(topic_vec_ge)
+            # cons_topic_vec_ge = self.topic_split_linear(topic_vec_ge) # 0719修改
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = self._topic_vec_ge01(topic_info, agent_mask, customer_mask, idx_mapped, hier)
         else:
-            topic_vec_ge = None
+            # topic_vec_ge = None
+            verdict_topic_vec_ge, pros_topic_vec_ge, cons_topic_vec_ge = None, None, None
 
         if self.training:
-            dec_state = self.decoder.init_decoder_state(src, top_vec)
+            # dec_state = self.decoder.init_decoder_state(src, top_vec)
+            verdict_dec_state = self.verdict_decoder.init_decoder_state(src, top_vec)
+            pros_dec_state = self.pros_decoder.init_decoder_state(src, top_vec)
+            cons_dec_state = self.cons_decoder.init_decoder_state(src, top_vec)
             # decode_output, _, _ = self.decoder(tgt[:, :-1], top_vec, dec_state,
-            #                                   memory_masks=1-mask_src_mapped,
-            #                                   topic_vec=topic_vec_ge)
-            decode_output, _, _ = self.decoder(tgt[:, :-1], top_vec, dec_state,
+            #                                    memory_masks=~mask_src_mapped,
+            #                                    topic_vec=topic_vec_ge)
+            verdict_decode_output, _, _ = self.verdict_decoder(tgt[:, :-1], top_vec, verdict_dec_state,
                                                memory_masks=~mask_src_mapped,
-                                               topic_vec=topic_vec_ge)
+                                               topic_vec=verdict_topic_vec_ge)
+            pros_decode_output, _, _ = self.pros_decoder(tgt[:, :-1], top_vec, pros_dec_state,
+                                               memory_masks=~mask_src_mapped,
+                                               topic_vec=pros_topic_vec_ge)
+            cons_decode_output, _, _ = self.cons_decoder(tgt[:, :-1], top_vec, cons_dec_state,
+                                               memory_masks=~mask_src_mapped,
+                                               topic_vec=cons_topic_vec_ge)
             with torch.no_grad():
-
                 # summary = self._fast_translate_batch(batch, top_vec, self.max_length,
-                #                                      memory_mask=1-mask_src_mapped,
+                #                                      memory_mask=~mask_src_mapped,
                 #                                      min_length=2, beam_size=1,
                 #                                      topic_vec=topic_vec_ge)
-                summary = self._fast_translate_batch(batch, top_vec, self.max_length,
-                                                     memory_mask=~mask_src_mapped,
-                                                     min_length=2, beam_size=1,
-                                                     topic_vec=topic_vec_ge)
+                verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=verdict_topic_vec_ge)
+                pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=pros_topic_vec_ge)
+                cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=cons_topic_vec_ge)
+                summary = verdict + pros + cons
                 # Get base summaries for reward computation.
                 summary_base = self._base_summary_generate(batch, topic_info)
 
@@ -958,13 +1188,18 @@ class Model(nn.Module):
 
         else:
             # summary = self._fast_translate_batch(batch, top_vec, self.max_length,
-            #                                      memory_mask=1-mask_src_mapped,
+            #                                      memory_mask=~mask_src_mapped,
             #                                      min_length=2, beam_size=self.args.beam_size,
             #                                      topic_vec=topic_vec_ge)
-            summary = self._fast_translate_batch(batch, top_vec, self.max_length,
-                                                 memory_mask=~mask_src_mapped,
-                                                 min_length=2, beam_size=self.args.beam_size,
-                                                 topic_vec=topic_vec_ge)
-            rl_loss, decode_output = None, None
+            verdict = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=verdict_topic_vec_ge)
+            pros = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=pros_topic_vec_ge)
+            cons = self._fast_translate_batch(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
+                                                     min_length=2, beam_size=self.beam_size,
+                                                     topic_vec=cons_topic_vec_ge)
+            rl_loss, verdict_decode_output, pros_decode_output, cons_decode_output = None, None, None, None
 
-        return rl_loss, decode_output, topic_loss, summary, ext_labels
+        return rl_loss, verdict_decode_output, pros_decode_output, cons_decode_output, topic_loss, summary, ext_labels
