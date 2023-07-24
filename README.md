@@ -1,7 +1,7 @@
 # amasum_review_summ
 代码部分参考：[https://github.com/RowitZou/topic-dialog-summ](https://github.com/RowitZou/topic-dialog-summ)
 
-[我的实验记录](https://github.com/wzl0228/note/blob/main/%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%84%8F%E8%A7%81%E6%91%98%E8%A6%81%E6%A8%A1%E5%9E%8B%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95.md)
+[我的实验记录](https://github.com/wzl0228/note/blob/main/%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95/%E4%B8%A4%E9%98%B6%E6%AE%B5%E6%84%8F%E8%A7%81%E6%91%98%E8%A6%81%E6%A8%A1%E5%9E%8B%E5%AE%9E%E9%AA%8C%E8%AE%B0%E5%BD%95.md)
 
 ## 1. 数据集格式转换
 
