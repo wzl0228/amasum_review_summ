@@ -103,7 +103,8 @@ class Translator(object):
 
         translations = []
 
-        batch_size = len(doc_batch)
+        # batch_size = len(doc_batch)
+        batch_size = min(len(doc_batch), len(tgt_data)) # 0724修改，是否合理？
 
         for b in range(batch_size):
 
