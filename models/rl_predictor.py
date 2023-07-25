@@ -103,8 +103,8 @@ class Translator(object):
 
         translations = []
 
-        # batch_size = len(doc_batch)
-        batch_size = min(len(doc_batch), len(tgt_data)) # 0724修改，是否合理？
+        batch_size = len(doc_batch)
+        # batch_size = min(len(doc_batch), len(tgt_data)) # 0724修改，是否合理？不合理，会截断生成的摘要
 
         for b in range(batch_size):
 
@@ -113,15 +113,18 @@ class Translator(object):
                 [int(n) for n in doc_batch[b]])
             pred_summ = ' '.join(pred_summ)
             pred_summ = pred_summ.replace('[unused0]', '').replace('[unused1]', '').\
-                replace('[unused2]', '').replace('[unused5]', '#').replace('[UNK]', '').strip()
+                replace('[unused2]', '').replace('[unused5]', '#').replace('[UNK]', '').replace('[unused13]', '').strip() # 把[unused13]分隔符剔除，因为新分隔符为[unused12]
             pred_summ = ' '.join(pred_summ.split())
             pred_summ = pred_summ.replace(" ##", "")
 
-            gold_data = ' '.join(tgt_data[b])
-            gold_data = gold_data.replace('[PAD]', '').replace('[unused1]', '').\
-                replace('[unused2]', '').replace('[unused5]', '#').replace("[UNK]", '').strip()
-            gold_data = ' '.join(gold_data.split())
-            gold_data = gold_data.replace(" ##", "")
+            if b > len(tgt_data):
+                continue # 正常是不会执行到这一句的，可以打印或者计数，输出来测试一下。
+            else:
+                gold_data = ' '.join(tgt_data[b])
+                gold_data = gold_data.replace('[PAD]', '').replace('[unused1]', '').\
+                    replace('[unused2]', '').replace('[unused5]', '#').replace("[UNK]", '').strip() # 参考摘要中不需要把[unused13]分隔符剔除，仍用[unused13]作分隔
+                gold_data = ' '.join(gold_data.split())
+                gold_data = gold_data.replace(" ##", "")
 
             translations.append((pred_summ, gold_data))
 
@@ -139,7 +142,7 @@ class Translator(object):
 
         for b in range(batch_size):
             # original text
-            original_sent = ' <S> '.join(origin_txt[ex_segs[b]:ex_segs[b+1]])
+            original_sent = ' <S> '.join(origin_txt[ex_segs[b]:ex_segs[b+1]]) # 索引可能有问题，待修改？
 
             # long doc context text
             pred_summ = self.tokenizer.convert_ids_to_tokens(
@@ -148,14 +151,17 @@ class Translator(object):
             pred_summ = pred_summ.replace(" ##", "")
 
             pred_summ = pred_summ.replace('[unused0]', '').replace('[unused1]', '').\
-                replace('[unused2]', '').replace('[unused5]', '#').replace('[UNK]', '').strip()
+                replace('[unused2]', '').replace('[unused5]', '#').replace('[UNK]', '').replace('[unused13]', '').strip()
             pred_summ = ' '.join(pred_summ.split())
-
-            gold_data = ' '.join(tgt_data[b])
-            gold_data = gold_data.replace('[PAD]', '').replace('[unused1]', '').replace('[unused2]', '').\
-                replace('[unused5]', '#').replace('[UNK]', '').strip()
-            gold_data = ' '.join(gold_data.split())
-            gold_data = gold_data.replace(" ##", "")
+            
+            if b > len(tgt_data):
+                continue
+            else:
+                gold_data = ' '.join(tgt_data[b])
+                gold_data = gold_data.replace('[PAD]', '').replace('[unused1]', '').replace('[unused2]', '').\
+                    replace('[unused5]', '#').replace('[UNK]', '').strip()
+                gold_data = ' '.join(gold_data.split())
+                gold_data = gold_data.replace(" ##", "")
 
             translation = (original_sent, pred_summ, gold_data)
             translations.append(translation)
@@ -218,8 +224,8 @@ class Translator(object):
                     # print("**********start*************")
                     # print(pred_summ)
                     # print(gold_data)
-                    if "[unused13]" in pred_summ:
-                        split_pred = pred_summ.split("[unused13]")
+                    if "[unused12]" in pred_summ: # [unused13] -> [unused12]
+                        split_pred = pred_summ.split("[unused12]") # [unused13] -> [unused12]
                         verdict_pred = split_pred[0].strip()
                         if len(split_pred) == 2:
                             pros_pred = split_pred[1].strip()
@@ -232,7 +238,7 @@ class Translator(object):
                         pros_pred = " "
                         cons_pred = " "
 
-                    if "[unused13]" in gold_data:
+                    if "[unused13]" in gold_data: # 参考摘要中分隔符仍然为[unused13]
                         split_gold = gold_data.split("[unused13]")
                         verdict_gold = split_gold[0].strip()
                         if len(split_gold) == 2:
@@ -370,8 +376,8 @@ class Translator(object):
                 for idx in range(len(translations)):
                     origin_sent, pred_summ, gold_data = translations[idx]
                     # 将生成摘要和黄金摘要都分为三个部分
-                    if "[unused13]" in pred_summ:
-                        split_pred = pred_summ.split("[unused13]")
+                    if "[unused12]" in pred_summ: # [unused13] -> [unused12]
+                        split_pred = pred_summ.split("[unused12]") # [unused13] -> [unused12]
                         verdict_pred = split_pred[0].strip()
                         if len(split_pred) == 2:
                             pros_pred = split_pred[1].strip()
@@ -498,7 +504,7 @@ class Translator(object):
            Shouldn't need the original dataset.
         """
         if self.args.pretrain:
-            pn_result, _, _, output_data = self.model.pretrain(batch)
+            pn_result, _, _, _, _, output_data = self.model.pretrain(batch) # 注意修改pretrain以后返回的数量对应修改该语句中横线的个数
         else:
             _, _, _, output_data, pn_result = self.model(batch)
         tgt_txt = batch.tgt_txt
