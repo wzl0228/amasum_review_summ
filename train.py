@@ -40,9 +40,9 @@ if __name__ == '__main__':
     parser.add_argument('-seed', default=666, type=int)
 
     # Batch sizes
-    parser.add_argument("-batch_size", default=4, type=int) # 2000->10->5->4
+    parser.add_argument("-batch_size", default=5, type=int) # 2000->10->5
     parser.add_argument("-batch_ex_size", default=2, type=int)
-    parser.add_argument("-test_batch_size", default=4, type=int) # 20000->10->5->4
+    parser.add_argument("-test_batch_size", default=5, type=int) # 20000->10->5
     parser.add_argument("-test_batch_ex_size", default=2, type=int) # 50->2
 
     # Model args
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument("-noise_rate", type=float, default=0.5) # 噪声主题比例
 
     # Training process args
-    parser.add_argument("-save_checkpoint_steps", default=2000, type=int)
+    parser.add_argument("-save_checkpoint_steps", default=2000, type=int) # 调试“评估”时可以把2000->5/10
     parser.add_argument("-accum_count", default=2, type=int)
     parser.add_argument("-report_every", default=5, type=int)
     parser.add_argument("-train_steps", default=80000, type=int)
