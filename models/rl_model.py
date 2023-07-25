@@ -421,7 +421,15 @@ class Model(nn.Module):
         cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                 min_length=2, beam_size=1,
                                                 topic_vec=cons_topic_vec_ge)
-        summary_base = verdict + pros + cons
+        # summary_base = verdict + pros + cons
+        special_token = torch.tensor([12], device=self.device)
+        summary_base = []  # 初始化空列表，用于存储拼接后的张量列表
+        for v, p, c in zip(verdict, pros, cons): # 遍历列表，提取张量，并进行拼接
+            v = v[:-1] # 去除结尾的2
+            p = p[:-1] # 去除结尾的2
+            s = torch.cat((v, special_token, p, special_token, c), dim=0) # # 拼接张量
+            summary_base.append(s)   # 将拼接后的张量添加到列表中
+        
         return summary_base
 
     def _rl(self, batch, pn_result, summary_sample, summary_base, gamma=0.95):
@@ -441,6 +449,10 @@ class Model(nn.Module):
             rouge_base = rouge.get_scores(base_summ, gold_summ)
             reward = rouge_score[0]["rouge-l"]["f"]
             reward_base = rouge_base[0]["rouge-l"]["f"]
+            # 计算奖励值换成rouge的1/2/L的和试试？
+            # reward = rouge_score[0]["rouge-l"]["f"] + rouge_score[0]["rouge-1"]["f"] + rouge_score[0]["rouge-2"]["f"]
+            # reward_base = rouge_base[0]["rouge-l"]["f"] + rouge_score[0]["rouge-1"]["f"] + rouge_score[0]["rouge-2"]["f"]
+            
             # original rewards
             rewards.append(torch.tensor([reward] * pn_result[i][0][2].size(0), device=self.device))
             base_rewards.append(torch.tensor([reward_base] * pn_result[i][0][2].size(0), device=self.device))
@@ -1569,7 +1581,26 @@ class Model(nn.Module):
             cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                  min_length=2, beam_size=self.beam_size,
                                                  topic_vec=cons_topic_vec_ge)
-            summary = verdict + pros + cons # 是否需要在verdict、pros、cons中剔除[unused13]分隔符，这里拼起来的时候再加上一个分隔符
+            # summary = verdict + ["[unused12]"] + pros + ["[unused12]"] + cons # 是否需要在verdict、pros、cons中拼起来的时候再加上[unused12]分隔符
+            # summary = verdict + [12] + pros + [12] + cons
+            # verdict = verdict[0][:-1] # 剔除结尾的2，这里剔不剔除都可以，评估是会剔除
+            # pros = pros[0][:-1] # 剔除结尾的2
+            
+            # print("verdict:",verdict)
+            # print(type(verdict))
+            # assert 0
+
+            special_token = torch.tensor([12], device=self.device)
+            summary = []  # 初始化空列表，用于存储拼接后的张量列表
+            for v, p, c in zip(verdict, pros, cons): # 遍历列表，提取张量，并进行拼接
+                v = v[:-1] # 去除结尾的2
+                p = p[:-1] # 去除结尾的2
+                s = torch.cat((v, special_token, p, special_token, c), dim=0) # # 拼接张量
+                summary.append(s)   # 将拼接后的张量添加到列表中
+            # print(summary)
+            # print(type(summary))
+            # assert 0
+        
         # return pn_result, decode_output, topic_loss, summary
         return pn_result, verdict_decode_output, pros_decode_output, cons_decode_output, topic_loss, summary
 
@@ -1673,7 +1704,35 @@ class Model(nn.Module):
                 cons = self._fast_translate_batch3(batch, top_vec, self.max_length, memory_mask=~mask_src_mapped,
                                                      min_length=2, beam_size=self.beam_size,
                                                      topic_vec=cons_topic_vec_ge)
-                summary = verdict + pros + cons
+                # summary = verdict + pros + cons
+                # summary = verdict + ["[unused12]"] + pros + ["[unused12]"] + cons # 不能直接这样+
+                # summary = verdict + [12] + pros + [12] + cons
+
+                # verdict = verdict[0][:-1] # 剔除结尾的2，这里剔不剔除都可以，评估是会剔除
+                # pros = pros[0][:-1] # 剔除结尾的2
+                # verdict = torch.cat([verdict, torch.tensor([12], device=self.device)])
+                # pros = torch.cat([pros, torch.tensor([12], device=self.device)])
+                # summary = torch.cat([verdict, pros, cons], dim=0)
+                
+                # verdict = verdict[0:-1] 
+                # pros = pros[0:-1]
+                # special_token = torch.tensor([12], device=self.device) # [unused12]
+                # summary = torch.cat((verdict, special_token, pros, special_token, cons), dim=0)
+
+                special_token = torch.tensor([12], device=self.device)
+                summary = []  # 初始化空列表，用于存储拼接后的张量列表
+                for v, p, c in zip(verdict, pros, cons): # 遍历列表，提取张量，并进行拼接
+                    v = v[:-1] # 去除结尾的2
+                    p = p[:-1] # 去除结尾的2
+                    s = torch.cat((v, special_token, p, special_token, c), dim=0) # # 拼接张量
+                    summary.append(s)   # 将拼接后的张量添加到列表中
+                
+                # print("summary:", summary)
+                # print("verdict:", verdict)
+                # print("pros:", pros)
+                # print("cons:", cons)
+                # print("type(verdict):",type(verdict))
+                # assert 0
                 # Get base summaries for reward computation.
                 summary_base = self._base_summary_generate(batch, topic_info)
 
